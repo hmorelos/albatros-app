@@ -338,13 +338,21 @@ textarea.form-input{resize:vertical;min-height:50px;}
     </div>
     <div class="form-grid">
       <div class="form-group form-full" id="fg-huesped"><label class="form-label">Huésped <span class="req">*</span></label><input class="form-input" type="text" id="f-huesped" placeholder="Nombre completo"><span class="error-msg">Requerido</span></div>
-      <div class="form-group" id="fg-telefono"><label class="form-label">Teléfono <span class="req">*</span></label><input class="form-input" type="tel" id="f-telefono" placeholder="444 123 4567"><span class="error-msg">Requerido</span></div>
+      <div class="form-group" id="fg-telefono"><label class="form-label">Teléfono <span class="req">*</span></label><input class="form-input" type="tel" id="f-telefono" placeholder="+1 555 123 4567 / 444 123 4567"><span class="error-msg">Mínimo 10 dígitos</span></div>
       <div class="form-group"><label class="form-label">Correo</label><input class="form-input" type="email" id="f-correo" placeholder="(opcional)"></div>
       <div class="form-group" id="fg-dep"><label class="form-label">Departamento <span class="req">*</span></label><select class="form-input" id="f-dep"><option value="">Seleccionar...</option></select><span class="error-msg">Requerido</span></div>
       <div class="form-group" id="fg-personas"><label class="form-label">Total personas <span class="req">*</span></label><input class="form-input" type="number" id="f-personas" min="1" max="30" placeholder="2"><span class="error-msg">Requerido</span></div>
       <div class="form-group" id="fg-entrada"><label class="form-label">Entrada <span class="req">*</span></label><input class="form-input" type="date" id="f-entrada"><span class="error-msg">Requerido</span></div>
       <div class="form-group" id="fg-salida"><label class="form-label">Salida <span class="req">*</span></label><input class="form-input" type="date" id="f-salida"><span class="error-msg">Debe ser posterior</span></div>
-      <div class="form-group" id="fg-precio"><label class="form-label">Precio renta MXN <span class="req">*</span></label><input class="form-input" type="number" id="f-precio" min="0" placeholder="1500"><span class="error-msg">Requerido</span></div>
+      <div class="form-group" id="fg-precio"><label class="form-label">Precio <span class="req">*</span>
+        <span style="margin-left:8px;font-weight:400;">
+          <label style="cursor:pointer;"><input type="radio" name="precio-modo" value="total" checked onchange="calcularPrecio()"> Total</label>
+          <label style="cursor:pointer;margin-left:8px;"><input type="radio" name="precio-modo" value="noche" onchange="calcularPrecio()"> Por noche</label>
+        </span>
+      </label>
+      <input class="form-input" type="number" id="f-precio" min="0" placeholder="Monto" oninput="calcularPrecio()">
+      <div id="precio-calc" style="font-size:11px;color:var(--text2);margin-top:3px;display:none"></div>
+      <span class="error-msg">Requerido</span></div>
       <div class="form-group"><label class="form-label">Depósito/Garantía MXN</label><input class="form-input" type="number" id="f-deposito" min="0" placeholder="0 (opcional)"></div>
       <div class="form-group"><label class="form-label">No. Reserva Airbnb</label><input class="form-input" type="text" id="f-num-airbnb" placeholder="HM429T4HTB (opcional)"></div>
       <div class="form-group form-full" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
@@ -437,6 +445,8 @@ textarea.form-input{resize:vertical;min-height:50px;}
       <div class="form-group"><label class="form-label">Link iCal (Google Apps Script)</label><input class="form-input" type="text" id="fd-ical" placeholder="https://script.google.com/macros/s/..."></div>
       <div class="form-group"><label class="form-label">Ubicación (Google Maps) <span class="req">*</span></label><input class="form-input" type="text" id="fd-ubicacion" placeholder="https://goo.gl/maps/..."></div>
       <div class="form-group"><label class="form-label">Instrucciones de acceso <span class="req">*</span></label><textarea class="form-input" id="fd-acceso" placeholder="Ej. Recoger llaves en caseta, check in 3pm..."></textarea></div>
+      <div class="form-group"><label class="form-label">Teléfono Ama de llaves</label><input class="form-input" type="tel" id="fd-tel-llaves" placeholder="+52 444 123 4567"></div>
+      <div class="form-group"><label class="form-label">Teléfono Administrador</label><input class="form-input" type="tel" id="fd-tel-admin" placeholder="+52 444 123 4567"></div>
       <div class="form-group"><label class="form-label">Red WiFi <span class="req">*</span></label><input class="form-input" type="text" id="fd-wifi" placeholder="Nombre de la red"></div>
       <div class="form-group"><label class="form-label">Contraseña WiFi <span class="req">*</span></label><input class="form-input" type="text" id="fd-wifi-pass" placeholder="Contraseña"></div>
       <div class="form-group"><label class="form-label">Link PDF Reglamento</label><input class="form-input" type="text" id="fd-reglamento" placeholder="https://docs.google.com/..."></div>
@@ -587,6 +597,38 @@ function setFinTab(tab,el){
 
 // ── CALENDARIO ──
 function cambiarMes(d){mesActual+=d;if(mesActual>11){mesActual=0;anioActual++;}if(mesActual<0){mesActual=11;anioActual--;}renderCalendario();}
+// PRECIO POR NOCHE / TOTAL
+function calcularPrecio(){
+  const modo=document.querySelector('input[name="precio-modo"]:checked')?.value||'total';
+  const entrada=document.getElementById('f-entrada').value;
+  const salida=document.getElementById('f-salida').value;
+  const precio=parseFloat(document.getElementById('f-precio').value)||0;
+  const calc=document.getElementById('precio-calc');
+  if(modo==='noche'&&entrada&&salida&&precio){
+    const noches=Math.round((new Date(salida)-new Date(entrada))/86400000);
+    if(noches>0){calc.textContent=`${noches} noches × $${precio.toLocaleString('es-MX')} = $${(noches*precio).toLocaleString('es-MX')} MXN total`;calc.style.display='block';return;}
+  }
+  calc.style.display='none';
+}
+function getPrecioTotal(){
+  const modo=document.querySelector('input[name="precio-modo"]:checked')?.value||'total';
+  const precio=parseFloat(document.getElementById('f-precio').value)||0;
+  if(modo==='noche'){
+    const entrada=document.getElementById('f-entrada').value,salida=document.getElementById('f-salida').value;
+    if(entrada&&salida){const n=Math.round((new Date(salida)-new Date(entrada))/86400000);return n>0?n*precio:precio;}
+  }
+  return precio;
+}
+
+// REGISTRO MENSAJES ENVIADOS
+function registrarMensaje(rsvpId,tipo){
+  const i=reservas.findIndex(r=>r.id===rsvpId);if(i<0)return;
+  if(!reservas[i].mensajes)reservas[i].mensajes={};
+  reservas[i].mensajes[tipo]=new Date().toISOString();
+  guardar('rsvp_v5',reservas);
+}
+function fmtMsgFecha(iso){if(!iso)return null;const d=new Date(iso);return d.toLocaleDateString('es-MX',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}
+
 function origenColor(origen,custom){if(custom)return custom;return{airbnb:'#E8393A',directo:'#185FA5',gestor:'#854F0B',otro:'#533AB7'}[origen]||'#666';}
 function diasOcupados(depId){
   const local=new Map(),ical=new Set(),apart=new Set();
@@ -676,10 +718,11 @@ function renderReservas(){
           <button class="btn btn-warning" onclick="generarPDFReservacion('${r.id}')">📋 Reservación</button>
         </div>
         <div class="wa-actions">
-          <button class="btn btn-wa" onclick="enviarWA('${r.id}','huesped')">💬 Huésped</button>
-          <button class="btn btn-wa" onclick="enviarWA('${r.id}','llaves')">💬 Ama llaves</button>
-          <button class="btn btn-wa" onclick="enviarWA('${r.id}','admin')">💬 Admin</button>
+          <button class="btn btn-wa" onclick="enviarWA('${r.id}','huesped')" title="${r.mensajes?.huesped?'Enviado: '+fmtMsgFecha(r.mensajes.huesped):'No enviado'}">💬 Huésped ${r.mensajes?.huesped?'✓':''}</button>
+          <button class="btn btn-wa" onclick="enviarWA('${r.id}','llaves')" title="${r.mensajes?.llaves?'Enviado: '+fmtMsgFecha(r.mensajes.llaves):'No enviado'}">💬 Ama llaves ${r.mensajes?.llaves?'✓':''}</button>
+          <button class="btn btn-wa" onclick="enviarWA('${r.id}','admin')" title="${r.mensajes?.admin?'Enviado: '+fmtMsgFecha(r.mensajes.admin):'No enviado'}">💬 Admin ${r.mensajes?.admin?'✓':''}</button>
         </div>
+        ${(r.mensajes?.huesped||r.mensajes?.llaves||r.mensajes?.admin)?`<div style="font-size:10px;color:var(--text3);margin-top:4px">${[r.mensajes?.huesped?'Huésped: '+fmtMsgFecha(r.mensajes.huesped):'',r.mensajes?.llaves?'Ama llaves: '+fmtMsgFecha(r.mensajes.llaves):'',r.mensajes?.admin?'Admin: '+fmtMsgFecha(r.mensajes.admin):''].filter(Boolean).join(' · ')}</div>`:''}
         ${r.notas?`<div style="font-size:11px;color:var(--text3);margin-top:5px">📝 ${r.notas}</div>`:''}
       </div>
       <div class="reserva-actions">
@@ -762,7 +805,7 @@ function guardarApartado(){
   const fakeR={huesped:nombre,telefono:tel,dep,entrada,salida,precio:0,personas:'',deposito:0};
   const msg=aplicarTemplate(templates.apartado,fakeR);
   const telClean=tel.replace(/\D/g,'');
-  window.open('https://wa.me/52'+telClean+'?text='+encodeURIComponent(msg),'_blank');
+  window.open('https://wa.me/'+telClean+'?text='+encodeURIComponent(msg),'_blank');
   renderTodo();
 }
 function liberarApartado(id){
@@ -771,7 +814,7 @@ function liberarApartado(id){
     const fakeR={huesped:a.nombre,telefono:a.telefono,dep:a.dep,entrada:a.entrada,salida:a.salida,precio:0,personas:'',deposito:0};
     const msg=aplicarTemplate(templates.liberado,fakeR);
     const tel=(a.telefono||'').replace(/\D/g,'');
-    if(tel)window.open('https://wa.me/52'+tel+'?text='+encodeURIComponent(msg),'_blank');
+    if(tel)window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(msg),'_blank');
   }
   apartados=apartados.filter(x=>x.id!==id);
   guardar('apart_v5',apartados);renderTodo();
@@ -786,7 +829,7 @@ function enviarWAApartado(id,tipo){
   const fakeR={huesped:a.nombre,telefono:a.telefono,dep:a.dep,entrada:a.entrada,salida:a.salida,precio:0,personas:'',deposito:0};
   const msg=aplicarTemplate(templates[tipo]||templates.apartado,fakeR);
   const tel=(a.telefono||'').replace(/\D/g,'');
-  window.open('https://wa.me/52'+tel+'?text='+encodeURIComponent(msg),'_blank');
+  window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(msg),'_blank');
 }
 
 // ── HISTORIAL ──
@@ -840,10 +883,17 @@ function filtrarReservasPorHuesped(nombre){
 // ── WHATSAPP ──
 function enviarWA(rsvpId,tipo){
   const r=reservas.find(x=>x.id===rsvpId);if(!r)return;
+  const dep=depById(r.dep);
   const tpl=templates[tipo]||'';
   const msg=aplicarTemplate(tpl,r);
-  const tel=(r.telefono||'').replace(/\D/g,'');
-  window.open('https://wa.me/52'+tel+'?text='+encodeURIComponent(msg),'_blank');
+  // Usar tel del contacto fijo si es ama de llaves o admin
+  let tel='';
+  if(tipo==='llaves') tel=(dep?.telLlaves||r.telefono||'').replace(/[\s\-\(\)]/g,'');
+  else if(tipo==='admin') tel=(dep?.telAdmin||r.telefono||'').replace(/[\s\-\(\)]/g,'');
+  else tel=(r.telefono||'').replace(/[\s\-\(\)]/g,'');
+  registrarMensaje(rsvpId,tipo);
+  if(tabActual==='reservas')renderReservas();
+  window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(msg),'_blank');
 }
 
 // ── PDFs ──
@@ -1063,8 +1113,9 @@ function cerrarModalReserva(){document.getElementById('modal-reserva').classList
 function guardarReserva(){
   limpiarErrores('modal-reserva');
   const huesped=document.getElementById('f-huesped').value.trim(),telefono=document.getElementById('f-telefono').value.trim(),correo=document.getElementById('f-correo').value.trim(),dep=document.getElementById('f-dep').value,personas=document.getElementById('f-personas').value,entrada=document.getElementById('f-entrada').value,salida=document.getElementById('f-salida').value,precio=document.getElementById('f-precio').value,deposito=document.getElementById('f-deposito').value,numAirbnb=document.getElementById('f-num-airbnb').value.trim(),origen=document.getElementById('f-origen').value,colorReserva=document.getElementById('f-color-reserva').value,pago=document.getElementById('f-pago').value,anticipo=document.getElementById('f-anticipo').value,notas=document.getElementById('f-notas').value.trim();
-  let ok=true;if(!huesped){marcarError('huesped');ok=false;}if(!telefono){marcarError('telefono');ok=false;}if(!dep){marcarError('dep');ok=false;}if(!personas||parseInt(personas)<1){marcarError('personas');ok=false;}if(!entrada){marcarError('entrada');ok=false;}if(!salida||salida<=entrada){marcarError('salida');ok=false;}if(!precio||parseFloat(precio)<0){marcarError('precio');ok=false;}if(!ok)return;
-  const obj={huesped,telefono,correo,dep,personas:parseInt(personas),entrada,salida,precio:parseFloat(precio),deposito:parseFloat(deposito)||0,numAirbnb,origen,colorReserva,pago,anticipo:pago==='parcial'?parseFloat(anticipo)||0:0,notas};
+  let ok=true;if(!huesped){marcarError('huesped');ok=false;}const telDigits=telefono.replace(/\D/g,'');if(!telefono||telDigits.length<10||telDigits.length>15){marcarError('telefono');ok=false;}if(!dep){marcarError('dep');ok=false;}if(!personas||parseInt(personas)<1){marcarError('personas');ok=false;}if(!entrada){marcarError('entrada');ok=false;}if(!salida||salida<=entrada){marcarError('salida');ok=false;}if(!precio||parseFloat(precio)<0){marcarError('precio');ok=false;}if(!ok)return;
+  const precioFinal=getPrecioTotal();
+  const obj={huesped,telefono,correo,dep,personas:parseInt(personas),entrada,salida,precio:precioFinal,deposito:parseFloat(deposito)||0,numAirbnb,origen,colorReserva,pago,anticipo:pago==='parcial'?parseFloat(anticipo)||0:0,notas,mensajes:editRsvpId?(reservas.find(x=>x.id===editRsvpId)?.mensajes||{}):{}};
   if(editRsvpId){const i=reservas.findIndex(x=>x.id===editRsvpId);if(i>=0)reservas[i]={...reservas[i],...obj};}else reservas.push({id:Date.now().toString(),...obj,creado:new Date().toISOString()});
   guardar('rsvp_v5',reservas);cerrarModalReserva();renderTodo();
 }
@@ -1085,7 +1136,7 @@ function renderDeps(){
     const sl=dep.icalSync?`Última sync: ${new Date(dep.icalSync).toLocaleString('es-MX',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}`:'Nunca sincronizado';
     return `<div class="dep-row"><div class="dep-dot" style="width:14px;height:14px;border-radius:50%;background:${dep.color};flex-shrink:0;margin-top:2px"></div>
     <div class="dep-row-info"><div class="dep-row-name">${dep.nombre}</div><div style="font-size:12px;color:var(--text2);margin-top:2px">${dep.direccion||'Sin dirección'} · ${nR} reserva${nR!==1?'s':''}</div>
-    <div style="font-size:11px;color:var(--text3);margin-top:3px">📶 ${dep.wifi||'—'} · 🔑 ${dep.wifiPass||'—'}</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:3px">📶 ${dep.wifi||'—'} · 🔑 ${dep.wifiPass||'—'} ${dep.telLlaves?'· 🧹 '+dep.telLlaves:''} ${dep.telAdmin?'· 👷 '+dep.telAdmin:''}</div>
     <div class="ical-row"><input class="ical-input" type="text" placeholder="Link iCal (Apps Script)..." value="${dep.icalUrl||''}" id="ical-${dep.id}" oninput="guardarIcalUrl('${dep.id}',this.value)"><button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="sincronizarIcal('${dep.id}')">🔄 Sincronizar</button></div>
     <div style="font-size:11px;color:var(--text3);margin-top:4px" id="ical-status-${dep.id}">${dep.icalUrl?sl:'Sin link iCal configurado'}</div>
     </div><div style="display:flex;gap:5px;flex-shrink:0"><button class="btn btn-icon" onclick="abrirModalDep('${dep.id}')">✏️</button><button class="btn btn-danger" onclick="pedirConfirm('¿Eliminar departamento?','Se eliminarán también todas sus reservas.',()=>eliminarDep('${dep.id}'))">🗑️</button></div></div>`;
@@ -1102,16 +1153,16 @@ function parsearIcal(txt){const f=new Set();txt.split('BEGIN:VEVENT').slice(1).f
 function pfi(s){return new Date(parseInt(s.slice(0,4)),parseInt(s.slice(4,6))-1,parseInt(s.slice(6,8)));}
 function abrirModalDep(id){
   editDepId=id||null;buildColorPicker(id?depById(id)?.color:COLORES[departamentos.length%COLORES.length]);limpiarErrores('modal-dep');document.getElementById('modal-dep').classList.add('open');
-  if(id){const d=depById(id);if(!d)return;document.getElementById('modal-dep-title').textContent='Editar departamento';document.getElementById('btn-dep-txt').textContent='Guardar cambios';document.getElementById('fd-nombre').value=d.nombre;document.getElementById('fd-direccion').value=d.direccion||'';document.getElementById('fd-ical').value=d.icalUrl||'';document.getElementById('fd-ubicacion').value=d.ubicacion||'';document.getElementById('fd-acceso').value=d.acceso||'';document.getElementById('fd-wifi').value=d.wifi||'';document.getElementById('fd-wifi-pass').value=d.wifiPass||'';document.getElementById('fd-reglamento').value=d.reglamento||'';document.getElementById('fd-num').value=d.num||'';}
-  else{document.getElementById('modal-dep-title').textContent='Nuevo departamento';document.getElementById('btn-dep-txt').textContent='Agregar';['fd-nombre','fd-direccion','fd-ical','fd-ubicacion','fd-acceso','fd-wifi','fd-wifi-pass','fd-reglamento','fd-num'].forEach(i=>document.getElementById(i).value='');}
+  if(id){const d=depById(id);if(!d)return;document.getElementById('modal-dep-title').textContent='Editar departamento';document.getElementById('btn-dep-txt').textContent='Guardar cambios';document.getElementById('fd-nombre').value=d.nombre;document.getElementById('fd-direccion').value=d.direccion||'';document.getElementById('fd-ical').value=d.icalUrl||'';document.getElementById('fd-ubicacion').value=d.ubicacion||'';document.getElementById('fd-acceso').value=d.acceso||'';document.getElementById('fd-tel-llaves').value=d.telLlaves||'';document.getElementById('fd-tel-admin').value=d.telAdmin||'';document.getElementById('fd-wifi').value=d.wifi||'';document.getElementById('fd-wifi-pass').value=d.wifiPass||'';document.getElementById('fd-reglamento').value=d.reglamento||'';document.getElementById('fd-num').value=d.num||'';}
+  else{document.getElementById('modal-dep-title').textContent='Nuevo departamento';document.getElementById('btn-dep-txt').textContent='Agregar';['fd-nombre','fd-direccion','fd-ical','fd-ubicacion','fd-acceso','fd-tel-llaves','fd-tel-admin','fd-wifi','fd-wifi-pass','fd-reglamento','fd-num'].forEach(i=>document.getElementById(i).value='');}
 }
 function cerrarModalDep(){document.getElementById('modal-dep').classList.remove('open');editDepId=null;}
 function guardarDep(){
   limpiarErrores('modal-dep');const nombre=document.getElementById('fd-nombre').value.trim();if(!nombre){document.getElementById('fg-dep-nombre').classList.add('field-error');return;}
-  const direccion=document.getElementById('fd-direccion').value.trim(),icalUrl=document.getElementById('fd-ical').value.trim(),ubicacion=document.getElementById('fd-ubicacion').value.trim(),acceso=document.getElementById('fd-acceso').value.trim(),wifi=document.getElementById('fd-wifi').value.trim(),wifiPass=document.getElementById('fd-wifi-pass').value.trim(),reglamento=document.getElementById('fd-reglamento').value.trim(),num=document.getElementById('fd-num').value.trim();
+  const direccion=document.getElementById('fd-direccion').value.trim(),icalUrl=document.getElementById('fd-ical').value.trim(),ubicacion=document.getElementById('fd-ubicacion').value.trim(),acceso=document.getElementById('fd-acceso').value.trim(),telLlaves=document.getElementById('fd-tel-llaves').value.trim(),telAdmin=document.getElementById('fd-tel-admin').value.trim(),wifi=document.getElementById('fd-wifi').value.trim(),wifiPass=document.getElementById('fd-wifi-pass').value.trim(),reglamento=document.getElementById('fd-reglamento').value.trim(),num=document.getElementById('fd-num').value.trim();
   const idx=COLORES.indexOf(colorSel),colorLight=idx>=0?COLORES_LIGHT[idx]:'#E6F1FB';
-  if(editDepId){const i=departamentos.findIndex(d=>d.id===editDepId);if(i>=0)departamentos[i]={...departamentos[i],nombre,direccion,icalUrl,ubicacion,acceso,wifi,wifiPass,reglamento,num,color:colorSel,colorLight};}
-  else departamentos.push({id:'dep_'+Date.now(),nombre,direccion,icalUrl,ubicacion,acceso,wifi,wifiPass,reglamento,num,color:colorSel,colorLight,icalFechas:[],icalSync:null});
+  if(editDepId){const i=departamentos.findIndex(d=>d.id===editDepId);if(i>=0)departamentos[i]={...departamentos[i],nombre,direccion,icalUrl,ubicacion,acceso,telLlaves,telAdmin,wifi,wifiPass,reglamento,num,color:colorSel,colorLight};}
+  else departamentos.push({id:'dep_'+Date.now(),nombre,direccion,icalUrl,ubicacion,acceso,telLlaves,telAdmin,wifi,wifiPass,reglamento,num,color:colorSel,colorLight,icalFechas:[],icalSync:null});
   guardar('deps_v5',departamentos);cerrarModalDep();renderTodo();if(tabActual==='departamentos')renderDeps();
 }
 function eliminarDep(id){departamentos=departamentos.filter(d=>d.id!==id);reservas=reservas.filter(r=>r.dep!==id);guardar('deps_v5',departamentos);guardar('rsvp_v5',reservas);renderTodo();renderDeps();}
@@ -1139,9 +1190,9 @@ function renderAlertas(){
   const hoy=new Date().toISOString().slice(0,10);
   const manana=new Date(Date.now()+86400000).toISOString().slice(0,10);
   const alertas=[];
+  const hoy_s=reservas.filter(r=>r.salida===hoy);
   const hoy_r=reservas.filter(r=>r.entrada===hoy);
   const man_r=reservas.filter(r=>r.entrada===manana);
-  const hoy_s=reservas.filter(r=>r.salida===hoy);
   const pend=reservas.filter(r=>(r.pago||'pendiente')==='pendiente'&&r.salida>=hoy);
   limpiarApartadosVencidos();
   const apart_exp=apartados.filter(a=>{const hrs=(a.expira-Date.now())/3600000;return hrs<6&&hrs>0;});
@@ -1206,6 +1257,8 @@ if(sessionStorage.getItem('albatros_session')){
   document.getElementById('usuario-nombre').textContent=sessionStorage.getItem('albatros_session');
   iniciarApp();
 }
+document.getElementById('f-entrada').addEventListener('change',calcularPrecio);
+document.getElementById('f-salida').addEventListener('change',calcularPrecio);
 </script>
 </body>
 </html>
