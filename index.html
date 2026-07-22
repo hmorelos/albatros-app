@@ -344,21 +344,22 @@ textarea.form-input{resize:vertical;min-height:50px;}
       <div class="form-group" id="fg-personas"><label class="form-label">Total personas <span class="req">*</span></label><input class="form-input" type="number" id="f-personas" min="1" max="30" placeholder="2"><span class="error-msg">Requerido</span></div>
       <div class="form-group" id="fg-entrada"><label class="form-label">Entrada <span class="req">*</span></label><input class="form-input" type="date" id="f-entrada"><span class="error-msg">Requerido</span></div>
       <div class="form-group" id="fg-salida"><label class="form-label">Salida <span class="req">*</span></label><input class="form-input" type="date" id="f-salida"><span class="error-msg">Debe ser posterior</span></div>
-      <div class="form-group" id="fg-precio"><label class="form-label">Precio <span class="req">*</span>
-        <span style="margin-left:8px;font-weight:400;">
-          <label style="cursor:pointer;"><input type="radio" name="precio-modo" value="total" checked onchange="calcularPrecio()"> Total</label>
-          <label style="cursor:pointer;margin-left:8px;"><input type="radio" name="precio-modo" value="noche" onchange="calcularPrecio()"> Por noche</label>
-        </span>
-      </label>
-      <input class="form-input" type="number" id="f-precio" min="0" placeholder="Monto" oninput="calcularPrecio()">
-      <div id="precio-calc" style="font-size:11px;color:var(--text2);margin-top:3px;display:none"></div>
-      <span class="error-msg">Requerido</span></div>
+      <div class="form-group form-full" id="fg-precio">
+        <label class="form-label">Precio <span class="req">*</span></label>
+        <div style="display:flex;gap:12px;margin-bottom:6px;font-size:12px;">
+          <label style="cursor:pointer;display:flex;align-items:center;gap:4px;"><input type="radio" name="precio-modo" value="total" checked onchange="calcularPrecio()"> Renta total</label>
+          <label style="cursor:pointer;display:flex;align-items:center;gap:4px;"><input type="radio" name="precio-modo" value="noche" onchange="calcularPrecio()"> Por noche</label>
+        </div>
+        <input class="form-input" type="number" id="f-precio" min="0" placeholder="Monto en MXN" oninput="calcularPrecio()">
+        <div id="precio-calc" style="font-size:11px;color:var(--success);margin-top:4px;display:none;font-weight:500"></div>
+        <span class="error-msg">Requerido</span>
+      </div>
       <div class="form-group"><label class="form-label">Depósito/Garantía MXN</label><input class="form-input" type="number" id="f-deposito" min="0" placeholder="0 (opcional)"></div>
       <div class="form-group"><label class="form-label">No. Reserva Airbnb</label><input class="form-input" type="text" id="f-num-airbnb" placeholder="HM429T4HTB (opcional)"></div>
       <div class="form-group form-full" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
         <div style="flex:1;min-width:140px;" class="form-group"><label class="form-label">Origen</label>
           <select class="form-input" id="f-origen" onchange="actualizarColorOrigen()">
-            <option value="airbnb">Airbnb</option><option value="directo">Directo (yo)</option><option value="gestor">Gestor externo</option><option value="otro">Otro</option>
+            <option value="airbnb">Airbnb</option><option value="directo">Directo (yo)</option><option value="mary">Mary</option><option value="alejandra">Alejandra</option><option value="gestor">Gestor externo</option><option value="otro">Otro</option>
           </select>
         </div>
         <div style="flex:1;min-width:120px;" class="form-group"><label class="form-label">Color</label>
@@ -629,7 +630,40 @@ function registrarMensaje(rsvpId,tipo){
 }
 function fmtMsgFecha(iso){if(!iso)return null;const d=new Date(iso);return d.toLocaleDateString('es-MX',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});}
 
-function origenColor(origen,custom){if(custom)return custom;return{airbnb:'#E8393A',directo:'#185FA5',gestor:'#854F0B',otro:'#533AB7'}[origen]||'#666';}
+// CARGA INICIAL DE RESERVAS HISTÓRICAS
+function cargarReservasHistoricas(){
+  if(cargar('historicas_cargadas_v1',false))return;
+  const hist=[
+    {id:'h1',huesped:'Guillermo Gaytan',telefono:'526563546756',correo:'',dep:'dep1',personas:6,entrada:'2026-07-03',salida:'2026-07-06',precio:1204.28,deposito:0,numAirbnb:'',origen:'airbnb',colorReserva:'#E8393A',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h2',huesped:'Raul Gutierrez Quintanilla',telefono:'524424067215',correo:'',dep:'dep2',personas:9,entrada:'2026-07-06',salida:'2026-07-10',precio:2100.00,deposito:0,numAirbnb:'',origen:'directo',colorReserva:'#185FA5',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h3',huesped:'Raul Gutierrez Alvarez',telefono:'524424067215',correo:'',dep:'dep1',personas:6,entrada:'2026-07-06',salida:'2026-07-10',precio:1400.00,deposito:0,numAirbnb:'',origen:'directo',colorReserva:'#185FA5',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h4',huesped:'Hernan Ruiz Morelos',telefono:'524427485277',correo:'',dep:'dep2',personas:9,entrada:'2026-07-10',salida:'2026-07-14',precio:0.01,deposito:0,numAirbnb:'',origen:'directo',colorReserva:'#185FA5',pago:'liquidada',anticipo:0,notas:'Uso familiar',mensajes:{},creado:new Date().toISOString()},
+    {id:'h5',huesped:'Hernan Ruiz Morelos',telefono:'524427485277',correo:'',dep:'dep1',personas:6,entrada:'2026-07-10',salida:'2026-07-14',precio:0.10,deposito:0,numAirbnb:'',origen:'directo',colorReserva:'#185FA5',pago:'liquidada',anticipo:0,notas:'Uso familiar',mensajes:{},creado:new Date().toISOString()},
+    {id:'h6',huesped:'Rodrigo Sanchez Anguiano',telefono:'525555092940',correo:'',dep:'dep2',personas:9,entrada:'2026-07-14',salida:'2026-07-18',precio:1775.02,deposito:0,numAirbnb:'',origen:'airbnb',colorReserva:'#E8393A',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h7',huesped:'Ernesto Lopez',telefono:'524432731925',correo:'',dep:'dep1',personas:6,entrada:'2026-07-15',salida:'2026-07-16',precio:1196.16,deposito:0,numAirbnb:'',origen:'airbnb',colorReserva:'#E8393A',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h8',huesped:'Sara Mota Mora',telefono:'+524494482368',correo:'',dep:'dep1',personas:6,entrada:'2026-07-16',salida:'2026-07-19',precio:1413.98,deposito:0,numAirbnb:'',origen:'airbnb',colorReserva:'#E8393A',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h9',huesped:'Lizeth Gomez Aguilar',telefono:'524522106728',correo:'',dep:'dep2',personas:9,entrada:'2026-07-18',salida:'2026-07-21',precio:5427.86,deposito:0,numAirbnb:'',origen:'airbnb',colorReserva:'#E8393A',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h10',huesped:'Moises Lopez Fonseca',telefono:'524439441314',correo:'',dep:'dep1',personas:6,entrada:'2026-07-19',salida:'2026-07-20',precio:1213.25,deposito:0,numAirbnb:'',origen:'airbnb',colorReserva:'#E8393A',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h11',huesped:'Alejandra Morelos Borja',telefono:'524433902013',correo:'',dep:'dep2',personas:9,entrada:'2026-07-20',salida:'2026-07-24',precio:300.00,deposito:0,numAirbnb:'',origen:'alejandra',colorReserva:'#993556',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h12',huesped:'Liliana Marusa Castillo Bugallo',telefono:'525625470442',correo:'',dep:'dep1',personas:6,entrada:'2026-07-20',salida:'2026-07-22',precio:2844.72,deposito:0,numAirbnb:'',origen:'airbnb',colorReserva:'#E8393A',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h13',huesped:'Sandra Moyao',telefono:'527471213394',correo:'',dep:'dep2',personas:7,entrada:'2026-07-22',salida:'2026-07-24',precio:1815.60,deposito:0,numAirbnb:'',origen:'airbnb',colorReserva:'#E8393A',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h14',huesped:'Carla Esquivel',telefono:'527321113143',correo:'',dep:'dep1',personas:6,entrada:'2026-07-22',salida:'2026-07-24',precio:1204.71,deposito:0,numAirbnb:'',origen:'airbnb',colorReserva:'#E8393A',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h15',huesped:'Imelda Guadalupe Cruz Vizcaino',telefono:'523317930779',correo:'',dep:'dep1',personas:6,entrada:'2026-07-24',salida:'2026-07-26',precio:5729.64,deposito:0,numAirbnb:'',origen:'airbnb',colorReserva:'#E8393A',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h16',huesped:'Karina Sanchez Muñoz',telefono:'523338094204',correo:'',dep:'dep2',personas:9,entrada:'2026-07-24',salida:'2026-07-28',precio:2115.95,deposito:0,numAirbnb:'',origen:'airbnb',colorReserva:'#E8393A',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h17',huesped:'Daniela Yuritxi Mendez Bernal',telefono:'524691420746',correo:'',dep:'dep2',personas:9,entrada:'2026-07-28',salida:'2026-07-31',precio:2154.48,deposito:0,numAirbnb:'',origen:'airbnb',colorReserva:'#E8393A',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()},
+    {id:'h18',huesped:'Fernando Esquivias Vargas',telefono:'524611007174',correo:'',dep:'dep1',personas:6,entrada:'2026-07-29',salida:'2026-08-01',precio:1400.00,deposito:0,numAirbnb:'',origen:'directo',colorReserva:'#185FA5',pago:'liquidada',anticipo:0,notas:'',mensajes:{},creado:new Date().toISOString()}
+  ];
+  // Merge: no duplicar si ya existe por fechas+dep+huesped
+  hist.forEach(h=>{
+    const existe=reservas.find(r=>r.huesped===h.huesped&&r.entrada===h.entrada&&r.dep===h.dep);
+    if(!existe)reservas.push(h);
+  });
+  guardar('rsvp_v5',reservas);
+  guardar('historicas_cargadas_v1',true);
+}
+
+function fechaHoy(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function origenColor(origen,custom){if(custom)return custom;return{airbnb:'#E8393A',directo:'#185FA5',mary:'#0F6E56',alejandra:'#993556',gestor:'#854F0B',otro:'#533AB7'}[origen]||'#666';}
 function diasOcupados(depId){
   const local=new Map(),ical=new Set(),apart=new Set();
   reservas.filter(r=>r.dep===depId).forEach(r=>{const color=r.colorReserva||origenColor(r.origen,'');let d=new Date(r.entrada+'T12:00:00');const fin=new Date(r.salida+'T12:00:00');while(d<fin){local.set(d.toISOString().slice(0,10),{color,huesped:r.huesped,precio:r.precio});d.setDate(d.getDate()+1);}});
@@ -640,7 +674,7 @@ function diasOcupados(depId){
 }
 function renderCalendario(){
   document.getElementById('cal-titulo').textContent=MESES[mesActual]+' '+anioActual;
-  const g=document.getElementById('cal-grid'),hoy=new Date().toISOString().slice(0,10);
+  const g=document.getElementById('cal-grid'),hoy=fechaHoy();
   if(!departamentos.length){g.innerHTML='<div class="empty-state">Agrega un departamento primero</div>';return;}
   g.innerHTML=departamentos.map(dep=>{
     const{local,ical,apart}=diasOcupados(dep.id);
@@ -677,7 +711,7 @@ function actualizarFiltrosDep(){
   const pend=[];
   departamentos.forEach(dep=>{
     if(!dep.icalFechas?.length)return;
-    const hoy=new Date().toISOString().slice(0,10);
+    const hoy=fechaHoy();
     const manual=new Set();
     reservas.filter(r=>r.dep===dep.id).forEach(r=>{let d=new Date(r.entrada+'T12:00:00');const fin=new Date(r.salida+'T12:00:00');while(d<fin){manual.add(d.toISOString().slice(0,10));d.setDate(d.getDate()+1);}});
     const sin=dep.icalFechas.filter(f=>f>=hoy&&!manual.has(f));
@@ -687,7 +721,7 @@ function actualizarFiltrosDep(){
 }
 function renderReservas(){
   const fd=document.getElementById('filtro-dep').value,fe=document.getElementById('filtro-estado').value,fp=document.getElementById('filtro-pago').value;
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=fechaHoy();
   let f=reservas.filter(r=>fd==='todos'||r.dep===fd);
   if(fe==='proximas')f=f.filter(r=>r.salida>=hoy);
   if(fe==='pasadas')f=f.filter(r=>r.salida<hoy);
@@ -1017,7 +1051,7 @@ function renderResumen(){
   const h=new Date(),ms=`${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}`;
   const iM=reservas.filter(r=>r.entrada.startsWith(ms)).reduce((s,r)=>s+r.precio,0);
   const eM=egresos.filter(e=>e.fecha.startsWith(ms)).reduce((s,e)=>s+e.monto,0);
-  const pc=reservas.filter(r=>(r.pago||'pendiente')==='pendiente'&&r.salida>=h.toISOString().slice(0,10)).reduce((s,r)=>s+r.precio,0);
+  const pc=reservas.filter(r=>(r.pago||'pendiente')==='pendiente'&&r.salida>=fechaHoy()).reduce((s,r)=>s+r.precio,0);
   const meses=mesesDisponibles().slice(0,6).reverse();
   const maxV=Math.max(...meses.map(m=>Math.max(reservas.filter(r=>r.entrada.startsWith(m)).reduce((s,r)=>s+r.precio,0),egresos.filter(e=>e.fecha.startsWith(m)).reduce((s,e)=>s+e.monto,0),1)));
   const barras=meses.map(m=>{const[y,mo]=m.split('-'),label=MESES[parseInt(mo)-1].slice(0,3);const i=reservas.filter(r=>r.entrada.startsWith(m)).reduce((s,r)=>s+r.precio,0),e=egresos.filter(eg=>eg.fecha.startsWith(m)).reduce((s,eg)=>s+eg.monto,0);return `<div class="bar-row"><div class="bar-label">${label}</div><div style="flex:1;display:flex;flex-direction:column;gap:2px;"><div class="bar-track"><div class="bar-fill bar-ing" style="width:${Math.round(i/maxV*100)}%">$${(i/1000).toFixed(0)}k</div></div><div class="bar-track"><div class="bar-fill bar-egr" style="width:${Math.round(e/maxV*100)}%">$${(e/1000).toFixed(0)}k</div></div></div></div>`;}).join('');
@@ -1080,7 +1114,7 @@ function abrirModalEgreso(id){
   const s=document.getElementById('fe-dep');s.innerHTML='<option value="general">General (ambos)</option>'+departamentos.map(d=>`<option value="${d.id}">${d.nombre}</option>`).join('');
   limpiarErrores('modal-egreso');document.getElementById('modal-egreso').classList.add('open');
   if(id){const e=egresos.find(x=>x.id===id);if(!e)return;document.getElementById('modal-egr-title').textContent='Editar gasto';document.getElementById('btn-egr-txt').textContent='Guardar cambios';document.getElementById('fe-fecha').value=e.fecha;document.getElementById('fe-cat').value=e.categoria;s.value=e.dep||'general';document.getElementById('fe-desc').value=e.desc;document.getElementById('fe-monto').value=e.monto;}
-  else{document.getElementById('modal-egr-title').textContent='Nuevo gasto';document.getElementById('btn-egr-txt').textContent='Guardar gasto';document.getElementById('fe-fecha').value=new Date().toISOString().slice(0,10);document.getElementById('fe-cat').value='';document.getElementById('fe-desc').value='';document.getElementById('fe-monto').value='';}
+  else{document.getElementById('modal-egr-title').textContent='Nuevo gasto';document.getElementById('btn-egr-txt').textContent='Guardar gasto';document.getElementById('fe-fecha').value=fechaHoy();document.getElementById('fe-cat').value='';document.getElementById('fe-desc').value='';document.getElementById('fe-monto').value='';}
 }
 function cerrarModalEgreso(){document.getElementById('modal-egreso').classList.remove('open');editEgrId=null;}
 function guardarEgreso(){
@@ -1121,8 +1155,8 @@ function guardarReserva(){
 }
 function actualizarColorOrigen(){
   const o=document.getElementById('f-origen').value;
-  const cols={airbnb:'#E8393A',directo:'#185FA5',gestor:'#854F0B',otro:'#533AB7'};
-  const labs={airbnb:'Rojo (Airbnb)',directo:'Azul (Directo)',gestor:'Naranja (Gestor)',otro:'Morado (Otro)'};
+  const cols={airbnb:'#E8393A',directo:'#185FA5',mary:'#0F6E56',alejandra:'#993556',gestor:'#854F0B',otro:'#533AB7'};
+  const labs={airbnb:'Rojo (Airbnb)',directo:'Azul (Directo)',mary:'Verde (Mary)',alejandra:'Rosa (Alejandra)',gestor:'Naranja (Gestor)',otro:'Morado (Otro)'};
   document.getElementById('f-color-reserva').value=cols[o]||'#185FA5';
   document.getElementById('f-color-label').textContent=labs[o]||'Personalizado';
 }
@@ -1187,8 +1221,10 @@ function eliminarUsuario(i){usuarios.splice(i,1);guardar('usuarios_v5',usuarios)
 
 // ── ALERTAS ──
 function renderAlertas(){
-  const hoy=new Date().toISOString().slice(0,10);
-  const manana=new Date(Date.now()+86400000).toISOString().slice(0,10);
+  const ahora=new Date();
+  const hoy=`${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}`;
+  const mananaD=new Date(ahora);mananaD.setDate(mananaD.getDate()+1);
+  const manana=`${mananaD.getFullYear()}-${String(mananaD.getMonth()+1).padStart(2,'0')}-${String(mananaD.getDate()).padStart(2,'0')}`;
   const alertas=[];
   const hoy_s=reservas.filter(r=>r.salida===hoy);
   const hoy_r=reservas.filter(r=>r.entrada===hoy);
@@ -1209,8 +1245,8 @@ function renderStats(){
   const h=new Date(),ms=`${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}`;
   const iM=reservas.filter(r=>r.entrada.startsWith(ms)).reduce((s,r)=>s+r.precio,0);
   const eM=egresos.filter(e=>e.fecha.startsWith(ms)).reduce((s,e)=>s+e.monto,0);
-  const pend=reservas.filter(r=>(r.pago||'pendiente')==='pendiente'&&r.salida>=h.toISOString().slice(0,10));
-  const proximas=reservas.filter(r=>r.salida>=h.toISOString().slice(0,10)).length;
+  const pend=reservas.filter(r=>(r.pago||'pendiente')==='pendiente'&&r.salida>=fechaHoy());
+  const proximas=reservas.filter(r=>r.salida>=fechaHoy()).length;
   document.getElementById('stats-cards').innerHTML=`
     <div class="stat-card"><div class="stat-label">Deptos</div><div class="stat-value">${departamentos.length}</div><div class="stat-sub">activos</div></div>
     <div class="stat-card"><div class="stat-label">Próximas llegadas</div><div class="stat-value">${proximas}</div><div class="stat-sub">reservadas</div></div>
@@ -1247,6 +1283,7 @@ function hideTip(){document.getElementById('cal-tooltip').style.display='none';}
 async function iniciarApp(){
   document.getElementById('fecha-hoy').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   await cargarDesdeSheets();
+  cargarReservasHistoricas();
   limpiarApartadosVencidos();
   renderTodo();
   setInterval(()=>{limpiarApartadosVencidos();renderAlertas();if(tabActual==='apartados')renderApartados();},60000);
