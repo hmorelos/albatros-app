@@ -183,6 +183,7 @@ textarea.form-input{resize:vertical;min-height:50px;}
 
 <!-- APP -->
 <div id="main-app" style="display:none">
+<div id="sync-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:999;background:var(--info-bg);color:var(--info);padding:10px;text-align:center;font-size:13px;font-weight:500;align-items:center;justify-content:center;gap:8px;">⟳ Sincronizando con Google Sheets...</div>
 <div class="container">
   <div class="header">
     <div>
@@ -193,6 +194,7 @@ textarea.form-input{resize:vertical;min-height:50px;}
       <span style="font-size:12px;color:var(--text2)">👤 <span id="usuario-nombre"></span></span>
       <button class="btn btn-primary" onclick="abrirModalReserva()">＋ Nueva reserva</button>
       <button class="btn btn-apart" onclick="abrirModalApartado()">📌 Apartar fecha</button>
+      <button class="btn btn-ghost" onclick="sincronizarManual()" style="font-size:12px">🔄 Sync</button>
       <button class="btn btn-ghost" onclick="cerrarSesion()" style="font-size:12px">Salir</button>
     </div>
   </div>
@@ -471,8 +473,48 @@ const LOGO_B64='/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQw
 const REGLAMENTO_DEFAULT='https://docs.google.com/document/d/1nDyiRlUJ-Qn-MQCehdVszYFPwVovZ3W1WineLMSrG78/edit?usp=sharing';
 const UBICACION_DEFAULT='https://goo.gl/maps/aUSMKCMqsLnVWdFi9';
 
+const DB_URL = 'https://script.google.com/macros/s/AKfycbxnuJU72VCmzkJ8CxKZqs3Mi9Yb5c87-EothQ3RMRdwITsklsKFGGMVIE4Ibt40PTQS/exec';
+let dbSyncing = false;
+
 function cargar(k,d){try{return JSON.parse(localStorage.getItem(k)||'null')||d;}catch(e){return d;}}
-function guardar(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function guardar(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} syncToSheets(k,v);}
+
+async function syncToSheets(tab, data) {
+  const tabMap = {'deps_v5':'departamentos','rsvp_v5':'reservas','egr_v5':'egresos','apart_v5':'apartados','usuarios_v5':'usuarios','tpl_v5':'templates'};
+  const sheetTab = tabMap[tab]; if(!sheetTab) return;
+  try {
+    await fetch(DB_URL, {method:'POST', body: JSON.stringify({action:'set', tab:sheetTab, data}), headers:{'Content-Type':'application/json'}});
+  } catch(e) { console.warn('Sync error:', e); }
+}
+
+async function cargarDesdeSheets() {
+  const banner = document.getElementById('sync-banner');
+  if(banner) banner.style.display='flex';
+  try {
+    const res = await fetch(DB_URL + '?action=getAll');
+    const all = await res.json();
+    const def_deps = [{id:'dep1',nombre:'Albatros 16',direccion:'Albatros 16, Manzanillo, Colima',desc:'',color:'#185FA5',colorLight:'#E6F1FB',icalUrl:'',icalFechas:[],icalSync:null,ubicacion:UBICACION_DEFAULT,wifi:'Albatros 16',wifiPass:'Ixtapa16',acceso:'Pasar a recoger las llaves en la caseta de vigilancia. Check in a partir de las 3 PM, check out antes de las 11 AM.',reglamento:REGLAMENTO_DEFAULT,num:'16'},{id:'dep2',nombre:'Albatros 30',direccion:'Albatros 30, Manzanillo, Colima',desc:'',color:'#3B6D11',colorLight:'#EAF3DE',icalUrl:'',icalFechas:[],icalSync:null,ubicacion:UBICACION_DEFAULT,wifi:'Albatros 30',wifiPass:'Ixtapa30',acceso:'Pasar a recoger las llaves en la caseta de vigilancia. Check in a partir de las 3 PM, check out antes de las 11 AM.',reglamento:REGLAMENTO_DEFAULT,num:'30'}];
+    if(all.departamentos?.length) departamentos = all.departamentos; else departamentos = cargar('deps_v5', def_deps);
+    if(all.reservas?.length) reservas = all.reservas; else reservas = cargar('rsvp_v5',[]);
+    if(all.egresos?.length) egresos = all.egresos; else egresos = cargar('egr_v5',[]);
+    if(all.apartados?.length) apartados = all.apartados; else apartados = cargar('apart_v5',[]);
+    if(all.usuarios?.length) usuarios = all.usuarios; else usuarios = cargar('usuarios_v5',[{user:'Hector',pass:'Ruiz Morelos',rol:'admin'}]);
+    if(all.templates && Object.keys(all.templates).length) templates = all.templates;
+    // Guardar en localStorage como caché
+    localStorage.setItem('deps_v5', JSON.stringify(departamentos));
+    localStorage.setItem('rsvp_v5', JSON.stringify(reservas));
+    localStorage.setItem('egr_v5', JSON.stringify(egresos));
+    localStorage.setItem('apart_v5', JSON.stringify(apartados));
+    localStorage.setItem('usuarios_v5', JSON.stringify(usuarios));
+    localStorage.setItem('tpl_v5', JSON.stringify(templates));
+    if(banner) banner.style.display='none';
+    return true;
+  } catch(e) {
+    console.warn('No se pudo cargar desde Sheets, usando caché local:', e);
+    if(banner){ banner.textContent='⚠️ Sin conexión — usando datos locales'; banner.style.background='var(--warning-bg)'; banner.style.color='var(--warning)'; setTimeout(()=>banner.style.display='none', 3000); }
+    return false;
+  }
+}
 
 let departamentos=cargar('deps_v5',[
   {id:'dep1',nombre:'Albatros 16',direccion:'Albatros 16, Manzanillo, Colima',desc:'',color:'#185FA5',colorLight:'#E6F1FB',icalUrl:'',icalFechas:[],icalSync:null,ubicacion:UBICACION_DEFAULT,wifi:'Albatros 16',wifiPass:'Ixtapa16',acceso:'Pasar a recoger las llaves en la caseta de vigilancia. Check in a partir de las 3 PM, check out antes de las 11 AM.',reglamento:REGLAMENTO_DEFAULT,num:'16'},
@@ -1133,6 +1175,11 @@ document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key===
 document.getElementById('login-user').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('login-pass').focus();});
 
 // ── UTILS ──
+async function sincronizarManual(){
+  await cargarDesdeSheets();
+  renderTodo();
+}
+
 function renderTodo(){renderStats();renderAlertas();renderCalendario();if(tabActual==='reservas'){actualizarFiltrosDep();renderReservas();}if(tabActual==='apartados'){limpiarApartadosVencidos();renderApartados();}if(tabActual==='historial')renderHistorial();if(tabActual==='finanzas')renderFinanzas();if(tabActual==='departamentos')renderDeps();}
 function limpiarErrores(modal){document.getElementById(modal).querySelectorAll('.field-error').forEach(el=>el.classList.remove('field-error'));}
 function marcarError(id){const el=document.getElementById('fg-'+id);if(el)el.classList.add('field-error');}
@@ -1141,8 +1188,9 @@ function cerrarConfirm(){document.getElementById('confirm-overlay').classList.re
 function ejecutarConfirm(){if(confirmCb)confirmCb();cerrarConfirm();}
 function showTip(e,el){const t=document.getElementById('cal-tooltip');if(!el.dataset.tip)return;t.textContent=el.dataset.tip;t.style.display='block';t.style.left=(e.clientX-60)+'px';t.style.top=(e.clientY-36)+'px';}
 function hideTip(){document.getElementById('cal-tooltip').style.display='none';}
-function iniciarApp(){
+async function iniciarApp(){
   document.getElementById('fecha-hoy').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  await cargarDesdeSheets();
   limpiarApartadosVencidos();
   renderTodo();
   setInterval(()=>{limpiarApartadosVencidos();renderAlertas();if(tabActual==='apartados')renderApartados();},60000);
