@@ -4,7 +4,6 @@
 var mes=new Date().getMonth(),ano=new Date().getFullYear();
 var editRsvp=null,editEgr=null,editDep=null,confirmCb=null,colorSel=COLORES[0],tabAct="cal",finTabAct="res",focusTpl=null;
 
-var depById=function(id){return deps.find(function(d){return d.id===id;});};
 var toggleAnticipo=function(){document.getElementById("fg-anticipo").style.display=document.getElementById("f-pago").value==="parcial"?"":"none";};
 var updateColor=function(){var o=document.getElementById("f-origen").value;document.getElementById("f-color").value=COL_ORIG[o]||"#185FA5";document.getElementById("color-lbl").textContent=COL_LAB[o]||"";};
 function fechaHoy(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}

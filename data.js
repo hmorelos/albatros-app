@@ -25,7 +25,7 @@ async function cargarSheets(){
   const bar=document.getElementById("sync-bar");if(bar)bar.style.display="block";
   try{
     const r=await fetch(DB_URL+"?action=getAll");const all=await r.json();
-    if(all.departamentos&&all.departamentos.length)deps=all.departamentos;
+    if(all.departamentos&&all.departamentos.length)deps=all.departamentos.map(function(d){return normDep(d);});
     if(all.reservas&&all.reservas.length)rsvps=all.reservas;
     if(all.egresos&&all.egresos.length)egrs=all.egresos;
     if(all.apartados&&all.apartados.length)aparts=all.apartados;
@@ -128,3 +128,22 @@ function cargarHistoricas(){
   });
   if(cambio)localStorage.setItem("deps_v6",JSON.stringify(deps));
 })();
+
+function normDep(d){
+  if(!d)return d;
+  d.nom=d.nom||d.nombre||"";
+  d.dir=d.dir||d.direccion||"";
+  d.colorL=d.colorL||d.colorLight||"#E6F1FB";
+  d.ical=d.ical||d.icalUrl||"";
+  d.icalF=d.icalF||d.icalFechas||[];
+  d.icalS=d.icalS||d.icalSync||null;
+  d.ubi=d.ubi||d.ubicacion||UBI_DEF;
+  d.telL=d.telL||d.telLlaves||"";
+  d.telA=d.telA||d.telAdmin||"";
+  d.wpass=d.wpass||d.wifiPass||"";
+  d.regl=d.regl||d.reglamento||REGL_DEF;
+  if(d.id==="dep1"&&!d.ical)d.ical=ICAL_BASE+"albatros16.ics";
+  if(d.id==="dep2"&&!d.ical)d.ical=ICAL_BASE+"albatros30.ics";
+  return d;
+}
+deps=deps.map(normDep);
