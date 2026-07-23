@@ -108,11 +108,11 @@ function renderCal(){
         var isF=!local.has(prevS)||local.get(prevS).id!==lData.id;
         var isLast=!local.has(nextS)||local.get(nextS).id!==lData.id;
         var brad=isF&&isLast?"border-radius:4px;":isF?"border-radius:4px 0 0 4px;":isLast?"border-radius:0 4px 4px 0;":"border-radius:0;";
-        var bl=isF?"border-left:2.5px solid "+c+";":"border-left:none;";
-        var br=isLast?"border-right:2.5px solid "+c+";":"border-right:none;";
-        st="background:"+c+"20;color:"+c+";font-weight:600;border-top:2.5px solid "+c+";border-bottom:2.5px solid "+c+";"+bl+br+brad;
-      } else if(ic){
-        st="background:repeating-linear-gradient(45deg,#F7C1C1,#F7C1C1 3px,#fde8e8 3px,#fde8e8 8px);color:#A32D2D;font-weight:600;border-radius:3px;";
+        var bl=isF?"border-left:3px solid "+c+";":"border-left:none;";
+        var br=isLast?"border-right:3px solid "+c+";":"border-right:none;";
+        var marg=isF?"margin:1.5px 0 1.5px 1.5px;":isLast?"margin:1.5px 1.5px 1.5px 0;":"margin:1.5px 0;";
+        st="background:"+c+"66;color:var(--text-primary);font-weight:600;border-top:3px solid "+c+";border-bottom:3px solid "+c+";"+bl+br+brad+marg;
+        } else if(ic){st="background:repeating-linear-gradient(45deg,#F7C1C1,#F7C1C1 3px,#fde8e8 3px,#fde8e8 8px);color:#A32D2D;font-weight:600;border-radius:3px;";
       } else {
         cls="dc dc-free";
       }
