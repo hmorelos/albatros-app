@@ -727,7 +727,6 @@ document.getElementById("f-sal").addEventListener("change",calcPrecio);
 
 async function iniciarApp(){
   document.getElementById("fecha-hoy").textContent=new Date().toLocaleDateString("es-MX",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-  migrarDeps();
   await cargarSheets();
   cargarHistoricas();
   limpiarAparts();

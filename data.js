@@ -91,13 +91,14 @@ function cargarHistoricas(){
   sv("hist_v1",true);
 }
 
-// MIGRACIÓN de estructura anterior a la nueva
-function migrarDeps(){
-  var necesita=deps.find(function(d){return d.nombre&&!d.nom;});
+// MIGRACIÓN de estructura anterior a la nueva — corre ANTES de renderizar
+(function migrarDeps(){
+  var necesita=deps.find(function(d){return (d.nombre&&!d.nom)||(!d.nom);});
   if(!necesita)return;
   deps=deps.map(function(d){
+    var id=d.id||"";
     return {
-      id:d.id,
+      id:id,
       nom:d.nombre||d.nom||"",
       num:d.num||"",
       dir:d.direccion||d.dir||"",
@@ -116,4 +117,14 @@ function migrarDeps(){
     };
   });
   localStorage.setItem("deps_v6",JSON.stringify(deps));
-}
+})();
+
+// Auto-asignar iCal de GitHub para dep1 y dep2
+(function asignarIcal(){
+  var cambio=false;
+  deps.forEach(function(d){
+    if(d.id==="dep1"&&!d.ical){d.ical=ICAL_BASE+"albatros16.ics";cambio=true;}
+    if(d.id==="dep2"&&!d.ical){d.ical=ICAL_BASE+"albatros30.ics";cambio=true;}
+  });
+  if(cambio)localStorage.setItem("deps_v6",JSON.stringify(deps));
+})();
