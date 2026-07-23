@@ -532,14 +532,19 @@ async function syncIcal(depId){
   var url=dep&&dep.ical?dep.ical:"";
   if(depId==="dep1")url=ICAL_BASE+"albatros16.ics";
   if(depId==="dep2")url=ICAL_BASE+"albatros30.ics";
-  if(!url){alert("Sin link iCal");return;}
-  var st=document.getElementById("ical-st-"+depId);st.textContent="Sincronizando...";
+  if(!url)return;
+  var st=document.getElementById("ical-st-"+depId);
+  if(st)st.textContent="Sincronizando...";
   try{
     var res=await fetch(url+"?t="+Date.now()),txt=await res.text();
     if(!txt.includes("BEGIN:VCALENDAR"))throw new Error("Link no valido");
     var fechas=parsearIcal(txt);dep.icalF=fechas;dep.icalS=new Date().toISOString();
-    sv("deps_v6",deps);st.textContent="OK - "+fechas.length+" dias importados";st.style.color="var(--s)";renderCal();
-  }catch(e){st.textContent="Error: "+e.message;st.style.color="var(--d)";}
+    sv("deps_v6",deps);
+    if(st){st.textContent="OK - "+fechas.length+" dias importados";st.style.color="var(--s)";}
+    renderCal();
+  }catch(e){
+    if(st){st.textContent="Error: "+e.message;st.style.color="var(--d)";}
+  }
 }
 function parsearIcal(txt){
   var f=new Set();
