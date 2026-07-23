@@ -90,3 +90,30 @@ function cargarHistoricas(){
   sv("rsvp_v6",rsvps);
   sv("hist_v1",true);
 }
+
+// MIGRACIÓN de estructura anterior a la nueva
+function migrarDeps(){
+  var necesita=deps.find(function(d){return d.nombre&&!d.nom;});
+  if(!necesita)return;
+  deps=deps.map(function(d){
+    return {
+      id:d.id,
+      nom:d.nombre||d.nom||"",
+      num:d.num||"",
+      dir:d.direccion||d.dir||"",
+      color:d.color||"#185FA5",
+      colorL:d.colorLight||d.colorL||"#E6F1FB",
+      ical:d.icalUrl||d.ical||"",
+      icalF:d.icalFechas||d.icalF||[],
+      icalS:d.icalSync||d.icalS||null,
+      ubi:d.ubicacion||d.ubi||UBI_DEF,
+      acceso:d.acceso||"",
+      telL:d.telLlaves||d.telL||"",
+      telA:d.telAdmin||d.telA||"",
+      wifi:d.wifi||"",
+      wpass:d.wifiPass||d.wpass||"",
+      regl:d.reglamento||d.regl||REGL_DEF
+    };
+  });
+  localStorage.setItem("deps_v6",JSON.stringify(deps));
+}
