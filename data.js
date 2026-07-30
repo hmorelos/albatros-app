@@ -135,6 +135,8 @@ function normDep(d){
   d.dir=d.dir||d.direccion||"";
   d.colorL=d.colorL||d.colorLight||"#E6F1FB";
   d.ical=d.ical||d.icalUrl||"";
+  d.icalAirbnb=d.icalAirbnb||"";
+  if(!d.icalAirbnb&&d.ical&&/airbnb\.|\/calendar\/ical\//i.test(d.ical))d.icalAirbnb=d.ical;
   d.icalF=d.icalF||d.icalFechas||[];
   d.icalS=d.icalS||d.icalSync||null;
   d.ubi=d.ubi||d.ubicacion||UBI_DEF;
@@ -147,3 +149,15 @@ function normDep(d){
   return d;
 }
 deps=deps.map(normDep);
+
+// MIGRACION: mover links Airbnb del campo antiguo `ical` al nuevo `icalAirbnb`
+(function migrarIcalAirbnb(){
+  var cambio=false;
+  deps.forEach(function(d){
+    if(!d.icalAirbnb&&d.ical&&/airbnb\.|\/calendar\/ical\//i.test(d.ical)){
+      d.icalAirbnb=d.ical;
+      cambio=true;
+    }
+  });
+  if(cambio)localStorage.setItem("deps_v6",JSON.stringify(deps));
+})();

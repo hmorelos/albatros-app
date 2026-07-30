@@ -524,22 +524,50 @@ function renderDeps(){
   lista.innerHTML=deps.map(function(dep){
     var nR=rsvps.filter(function(r){return r.dep===dep.id;}).length;
     var sl=dep.icalS?"Ultima sync: "+new Date(dep.icalS).toLocaleString("es-MX",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"Nunca sincronizado";
-    return "<div class=\"dep-row\"><div style=\"width:14px;height:14px;border-radius:50%;background:"+dep.color+";flex-shrink:0;margin-top:2px\"></div><div class=\"dep-row-info\"><div style=\"font-size:14px;font-weight:600\">"+dep.nom+"</div><div style=\"font-size:12px;color:var(--text2);margin-top:2px\">"+(dep.dir||"Sin direccion")+" &middot; "+nR+" reserva"+(nR!==1?"s":"")+"</div><div style=\"font-size:11px;color:var(--text3);margin-top:3px\">WiFi: "+(dep.wifi||"-")+" | Pass: "+(dep.wpass||"-")+(dep.telL?" | Llaves: "+dep.telL:"")+(dep.telA?" | Admin: "+dep.telA:"")+"</div><div class=\"ical-row\"><input class=\"ical-inp\" type=\"text\" placeholder=\"Link iCal...\" value=\""+(dep.ical||"")+"\" id=\"ical-"+dep.id+"\" oninput=\"dep.ical=this.value;sv('deps_v6',deps)\"><button class=\"btn btn-g\" style=\"font-size:12px;padding:5px 10px\" onclick=\"syncIcal('"+dep.id+"')\">Sincronizar</button></div><div style=\"font-size:11px;color:var(--text3);margin-top:4px\" id=\"ical-st-"+dep.id+"\">"+(dep.ical?sl:"Sin link iCal")+"</div></div><div style=\"display:flex;gap:5px;flex-shrink:0\"><button class=\"btn btn-i\" onclick=\"abrirDep('"+dep.id+"')\">Edit</button><button class=\"btn btn-del\" onclick=\"pConfirm('Eliminar departamento?','Se eliminaran tambien todas sus reservas.',function(){delDep('"+dep.id+"');})\">Del</button></div></div>";
+    return "<div class=\"dep-row\"><div style=\"width:14px;height:14px;border-radius:50%;background:"+dep.color+";flex-shrink:0;margin-top:2px\"></div><div class=\"dep-row-info\"><div style=\"font-size:14px;font-weight:600\">"+dep.nom+"</div><div style=\"font-size:12px;color:var(--text2);margin-top:2px\">"+(dep.dir||"Sin direccion")+" &middot; "+nR+" reserva"+(nR!==1?"s":"")+"</div><div style=\"font-size:11px;color:var(--text3);margin-top:3px\">WiFi: "+(dep.wifi||"-")+" | Pass: "+(dep.wpass||"-")+(dep.telL?" | Llaves: "+dep.telL:"")+(dep.telA?" | Admin: "+dep.telA:"")+"</div><div class=\"ical-row\" style=\"flex-direction:column;gap:6px\"><div style=\"font-size:11px;color:var(--text2)\">iCal escritura (GitHub → Airbnb):</div><input class=\"ical-inp\" type=\"text\" placeholder=\"Link iCal de escritura...\" value=\""+(dep.ical||"")+"\" id=\"ical-"+dep.id+"\" oninput=\"dep.ical=this.value;sv('deps_v6',deps)\"><div style=\"font-size:11px;color:var(--text2)\">iCal lectura (Airbnb → App):</div><input class=\"ical-inp\" type=\"text\" placeholder=\"https://www.airbnb.mx/calendar/ical/...\" value=\""+(dep.icalAirbnb||"")+"\" id=\"ical-ab-"+dep.id+"\" oninput=\"dep.icalAirbnb=this.value;sv('deps_v6',deps)\"><button class=\"btn btn-g\" style=\"font-size:12px;padding:5px 10px\" onclick=\"syncIcal('"+dep.id+"')\">Sincronizar Airbnb</button></div><div style=\"font-size:11px;color:var(--text3);margin-top:4px\" id=\"ical-st-"+dep.id+"\">"+(dep.icalAirbnb?sl:"Sin link iCal de Airbnb")+"</div></div><div style=\"display:flex;gap:5px;flex-shrink:0\"><button class=\"btn btn-i\" onclick=\"abrirDep('"+dep.id+"')\">Edit</button><button class=\"btn btn-del\" onclick=\"pConfirm('Eliminar departamento?','Se eliminaran tambien todas sus reservas.',function(){delDep('"+dep.id+"');})\">Del</button></div></div>";
   }).join("");
 }
 async function syncIcal(depId){
   var dep=depById(depId);
-  var url=dep&&dep.ical?dep.ical:"";
-
-  if(!url)return;
+  var url=dep&&dep.icalAirbnb?dep.icalAirbnb:"";
+  if(!url){var st=document.getElementById("ical-st-"+depId);if(st){st.textContent="Sin link iCal de Airbnb";st.style.color="var(--d)";}return;}
   var st=document.getElementById("ical-st-"+depId);
   if(st)st.textContent="Sincronizando...";
   try{
-    var res=await fetch("https://api.allorigins.win/get?url="+encodeURIComponent(url));var data=await res.json();var txt=data.contents||"";
+    var txt="";
+    if(url.includes("BEGIN:VCALENDAR")){
+      txt=url;
+    } else {
+      try{
+        var res1=await fetch("https://api.allorigins.win/get?url="+encodeURIComponent(url));
+        var raw1=await res1.text();
+        if(raw1.includes("BEGIN:VCALENDAR"))txt=raw1;
+        else {
+          try{var data1=JSON.parse(raw1);txt=data1&&data1.contents?data1.contents:"";}catch(_){txt="";}
+        }
+      }catch(_){txt="";}
+
+      if(!txt.includes("BEGIN:VCALENDAR")){
+        try{
+          var res2=await fetch("https://api.allorigins.win/raw?url="+encodeURIComponent(url));
+          var raw2=await res2.text();
+          if(raw2.includes("BEGIN:VCALENDAR"))txt=raw2;
+        }catch(_){ }
+      }
+
+      if(!txt.includes("BEGIN:VCALENDAR")&&/^https?:\/\//i.test(url)){
+        try{
+          var urlNoProto=url.replace(/^https?:\/\//i,"");
+          var res3=await fetch("https://r.jina.ai/http://"+urlNoProto);
+          var raw3=await res3.text();
+          if(raw3.includes("BEGIN:VCALENDAR"))txt=raw3;
+        }catch(_){ }
+      }
+    }
     if(!txt.includes("BEGIN:VCALENDAR"))throw new Error("Link no valido");
     var fechas=parsearIcal(txt);dep.icalF=fechas;dep.icalS=new Date().toISOString();
     sv("deps_v6",deps);
-    if(st){st.textContent="OK - "+fechas.length+" dias importados";st.style.color="var(--s)";}
+    if(st){st.textContent="OK - "+fechas.length+" dias de Airbnb importados";st.style.color="var(--s)";}
     renderCal();
   }catch(e){
     if(st){st.textContent="Error: "+e.message;st.style.color="var(--d)";}
@@ -569,13 +597,14 @@ function abrirDep(id){
     document.getElementById("dep-tit").textContent="Editar departamento";document.getElementById("dep-btn-txt").textContent="Guardar cambios";
     document.getElementById("d-nom").value=d.nom;document.getElementById("d-num").value=d.num||"";
     document.getElementById("d-dir").value=d.dir||"";document.getElementById("d-ical").value=d.ical||"";
+    document.getElementById("d-ical-ab").value=d.icalAirbnb||"";
     document.getElementById("d-ubi").value=d.ubi||"";document.getElementById("d-acceso").value=d.acceso||"";
     document.getElementById("d-tel-llaves").value=d.telL||"";document.getElementById("d-tel-admin").value=d.telA||"";
     document.getElementById("d-wifi").value=d.wifi||"";document.getElementById("d-wpass").value=d.wpass||"";
     document.getElementById("d-regl").value=d.regl||"";
   } else {
     document.getElementById("dep-tit").textContent="Nuevo departamento";document.getElementById("dep-btn-txt").textContent="Agregar";
-    ["d-nom","d-num","d-dir","d-ical","d-ubi","d-acceso","d-tel-llaves","d-tel-admin","d-wifi","d-wpass","d-regl"].forEach(function(i){document.getElementById(i).value="";});
+    ["d-nom","d-num","d-dir","d-ical","d-ical-ab","d-ubi","d-acceso","d-tel-llaves","d-tel-admin","d-wifi","d-wpass","d-regl"].forEach(function(i){document.getElementById(i).value="";});
   }
 }
 function cerrarDep(){document.getElementById("mo-dep").classList.remove("open");editDep=null;}
@@ -584,16 +613,18 @@ function guardarDep(){
   var nom=document.getElementById("d-nom").value.trim();
   if(!nom){document.getElementById("fg-dep-nom").classList.add("fe");return;}
   var num=document.getElementById("d-num").value.trim(),dir=document.getElementById("d-dir").value.trim();
-  var ical=document.getElementById("d-ical").value.trim(),ubi=document.getElementById("d-ubi").value.trim();
+  var ical=document.getElementById("d-ical").value.trim();
+  var icalAirbnb=document.getElementById("d-ical-ab").value.trim();
+  var ubi=document.getElementById("d-ubi").value.trim();
   var acceso=document.getElementById("d-acceso").value.trim(),telL=document.getElementById("d-tel-llaves").value.trim();
   var telA=document.getElementById("d-tel-admin").value.trim(),wifi=document.getElementById("d-wifi").value.trim();
   var wpass=document.getElementById("d-wpass").value.trim(),regl=document.getElementById("d-regl").value.trim();
   var idx=COLORES.indexOf(colorSel),colorL=idx>=0?COLORES_L[idx]:"#E6F1FB";
   if(editDep){
     var i=deps.findIndex(function(d){return d.id===editDep;});
-    if(i>=0)deps[i]=Object.assign({},deps[i],{nom:nom,num:num,dir:dir,ical:ical,ubi:ubi,acceso:acceso,telL:telL,telA:telA,wifi:wifi,wpass:wpass,regl:regl,color:colorSel,colorL:colorL});
+    if(i>=0)deps[i]=Object.assign({},deps[i],{nom:nom,num:num,dir:dir,ical:ical,icalAirbnb:icalAirbnb,ubi:ubi,acceso:acceso,telL:telL,telA:telA,wifi:wifi,wpass:wpass,regl:regl,color:colorSel,colorL:colorL});
   } else {
-    deps.push({id:"dep_"+Date.now(),nom:nom,num:num,dir:dir,ical:ical,ubi:ubi,acceso:acceso,telL:telL,telA:telA,wifi:wifi,wpass:wpass,regl:regl,color:colorSel,colorL:colorL,icalF:[],icalS:null});
+    deps.push({id:"dep_"+Date.now(),nom:nom,num:num,dir:dir,ical:ical,icalAirbnb:icalAirbnb,ubi:ubi,acceso:acceso,telL:telL,telA:telA,wifi:wifi,wpass:wpass,regl:regl,color:colorSel,colorL:colorL,icalF:[],icalS:null});
   }
   sv("deps_v6",deps);cerrarDep();renderTodo();if(tabAct==="dep")renderDeps();
 }
