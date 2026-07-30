@@ -536,7 +536,7 @@ async function syncIcal(depId){
   var st=document.getElementById("ical-st-"+depId);
   if(st)st.textContent="Sincronizando...";
   try{
-    var res=await fetch(url+"?t="+Date.now()),txt=await res.text();
+    var res=await fetch("https://api.allorigins.win/get?url="+encodeURIComponent(url));var data=await res.json();var txt=data.contents||"";
     if(!txt.includes("BEGIN:VCALENDAR"))throw new Error("Link no valido");
     var fechas=parsearIcal(txt);dep.icalF=fechas;dep.icalS=new Date().toISOString();
     sv("deps_v6",deps);
