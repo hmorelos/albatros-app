@@ -530,8 +530,7 @@ function renderDeps(){
 async function syncIcal(depId){
   var dep=depById(depId);
   var url=dep&&dep.ical?dep.ical:"";
-  if(depId==="dep1")url=ICAL_BASE+"albatros16.ics";
-  if(depId==="dep2")url=ICAL_BASE+"albatros30.ics";
+
   if(!url)return;
   var st=document.getElementById("ical-st-"+depId);
   if(st)st.textContent="Sincronizando...";
