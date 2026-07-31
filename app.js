@@ -58,6 +58,93 @@ function setFinTab(tab,el){
   else renderEgr();
 }
 
+function getTabBtn(tab){
+  var idx={cal:0,rsvp:1,apart:2,hist:3,fin:4,msg:5,dep:6,usr:7}[tab];
+  return typeof idx==="number"?document.querySelectorAll(".tab")[idx]:null;
+}
+function goTab(tab){
+  var b=getTabBtn(tab);
+  if(b)setTab(tab,b);
+}
+function getFinBtn(tab){
+  var idx={res:0,depto:1,aseo:2,ing:3,egr:4}[tab];
+  return typeof idx==="number"?document.querySelectorAll(".fin-tab")[idx]:null;
+}
+function goFinTab(tab){
+  var b=getFinBtn(tab);
+  if(b)setFinTab(tab,b);
+}
+
+function setRsvpFiltros(dep,est,pago,msg){
+  document.getElementById("fil-dep").value=dep||"todos";
+  document.getElementById("fil-est").value=est||"todos";
+  document.getElementById("fil-pago").value=pago||"todos";
+  document.getElementById("fil-msg").value=msg||"todos";
+}
+function enfocarReserva(id){
+  setTimeout(function(){
+    var el=document.getElementById("rsvp-"+id);
+    if(!el)return;
+    el.scrollIntoView({behavior:"smooth",block:"center"});
+    el.style.boxShadow="0 0 0 2px var(--i)";
+    setTimeout(function(){el.style.boxShadow="";},1800);
+  },80);
+}
+function verReserva(id,est,pago,msg){
+  goTab("rsvp");
+  setRsvpFiltros("todos",est||"todos",pago||"todos",msg||"todos");
+  renderRsvp();
+  if(id)enfocarReserva(id);
+}
+
+function verDeptos(){
+  goTab("dep");
+}
+function verProximasLlegadas(){
+  verReserva(null,"prox","todos","todos");
+}
+function verIngresosMes(){
+  goTab("fin");
+  goFinTab("ing");
+  var h=new Date(),ms=h.getFullYear()+"-"+String(h.getMonth()+1).padStart(2,"0");
+  var filMes=document.getElementById("fil-ing-mes");
+  if(filMes)filMes.value=ms;
+  var filDep=document.getElementById("fil-ing-dep");
+  if(filDep)filDep.value="todos";
+  renderIng();
+}
+function verPorCobrar(){
+  verReserva(null,"prox","pendiente","todos");
+}
+function verApartados(){
+  goTab("apart");
+}
+function verMensajesPendientes(){
+  var hoy=fechaHoy();
+  var pendientes=rsvps.filter(function(r){return msgPendiente(r)&&r.salida>=hoy;}).sort(function(a,b){return a.entrada.localeCompare(b.entrada);});
+  verReserva(pendientes.length?pendientes[0].id:null,"prox","todos","pendmsg");
+}
+function verLlegadasHoy(){
+  var hoy=fechaHoy();
+  var llegadas=rsvps.filter(function(r){return r.entrada===hoy;}).sort(function(a,b){return a.entrada.localeCompare(b.entrada);});
+  verReserva(llegadas.length===1?llegadas[0].id:null,"prox","todos","todos");
+}
+function verLlegadasManana(){
+  var man=new Date();
+  man.setDate(man.getDate()+1);
+  var manS=man.getFullYear()+"-"+String(man.getMonth()+1).padStart(2,"0")+"-"+String(man.getDate()).padStart(2,"0");
+  var llegadas=rsvps.filter(function(r){return r.entrada===manS;}).sort(function(a,b){return a.entrada.localeCompare(b.entrada);});
+  verReserva(llegadas.length===1?llegadas[0].id:null,"prox","todos","todos");
+}
+function verSalidasHoy(){
+  var hoy=fechaHoy();
+  var salidas=rsvps.filter(function(r){return r.salida===hoy;}).sort(function(a,b){return a.entrada.localeCompare(b.entrada);});
+  verReserva(salidas.length===1?salidas[0].id:null,"prox","todos","todos");
+}
+function verApartadosPorVencer(){
+  goTab("apart");
+}
+
 // CALENDARIO
 function cambiarMes(d){mes+=d;if(mes>11){mes=0;ano++;}if(mes<0){mes=11;ano--;}renderCal();}
 function origenColor(o,c){if(c)return c;return COL_ORIG[o]||"#666";}
@@ -172,7 +259,7 @@ function renderRsvp(){
     var msgTxt=(m.huesped?"<span style=\"color:var(--s)\">Huesped OK</span>":"<span style=\"color:var(--d)\">Huesped pend</span>")+" &middot; "+(m.llaves?"<span style=\"color:var(--s)\">Llaves OK</span>":"<span style=\"color:var(--d)\">Llaves pend</span>")+" &middot; "+(m.admin?"<span style=\"color:var(--s)\">Admin OK</span>":"<span style=\"color:var(--d)\">Admin pend</span>");
     var depBadge=dep?"<span class=\"badge\" style=\"background:"+dep.colorL+";color:"+dep.color+"\">"+dep.nom+"</span>":"";
     var pdfl=r.pdfLink?"<a href=\""+r.pdfLink+"\" target=\"_blank\" style=\"font-size:11px;color:var(--i)\">Ver PDF</a>":"";
-    return "<div class=\"rv-card "+ps+"\" style=\""+(pasada?"opacity:.6":"")+"\"><div class=\"rv-info\"><div class=\"rv-h\">"+r.huesped+"</div><div class=\"rv-f\">"+ef+" &rarr; "+sf+" &middot; "+n+" noche"+(n!==1?"s":"")+"</div><div class=\"rv-m\">"+depBadge+"<span class=\"badge\">$"+r.precio.toLocaleString("es-MX")+" MXN</span><span class=\"badge\">"+r.personas+" pers</span>"+(r.deposito?"<span class=\"badge\">Dep $"+r.deposito.toLocaleString("es-MX")+"</span>":"")+(r.numAirbnb?"<span class=\"badge\">"+r.numAirbnb+"</span>":"")+"</div><div class=\"rv-m\">"+pb+"</div>"+pa+"<div class=\"wa-row\"><button class=\"btn btn-pdf\" onclick=\"generarPDF('"+r.id+"','huesped')\">PDF Huesped</button><button class=\"btn btn-pdf\" onclick=\"generarPDF('"+r.id+"','llaves')\">PDF Llaves</button><button class=\"btn btn-pdf\" onclick=\"generarPDF('"+r.id+"','admin')\">PDF Admin</button><button class=\"btn btn-warn\" onclick=\"genPDFReservacion('"+r.id+"')\" id=\"btn-rpdf-"+r.id+"\">"+(r.pdfLink?"PDF generado":"PDF Reservacion")+"</button>"+(r.pdfLink?"<a href=\\\""+r.pdfLink+"\\\" target=\\\"_blank\\\" style=\\\"font-size:11px;color:var(--i);margin-left:4px\\\">Ver</a>":"")+"</div><div class=\"wa-row\"><button class=\"btn btn-wa\" onclick=\"enviarWA('"+r.id+"','huesped')\">WA Huesped"+(m.huesped?" OK":"")+"</button><button class=\"btn btn-wa\" onclick=\"enviarWA('"+r.id+"','llaves')\">WA Llaves"+(m.llaves?" OK":"")+"</button><button class=\"btn btn-wa\" onclick=\"enviarWA('"+r.id+"','admin')\">WA Admin"+(m.admin?" OK":"")+"</button></div><div style=\"font-size:10px;color:"+msgColor+";margin-top:5px;font-weight:500\">"+msgTxt+"</div>"+(r.notas?"<div style=\"font-size:11px;color:var(--text3);margin-top:4px\">"+r.notas+"</div>":"")+"</div><div class=\"rv-actions\"><button class=\"btn btn-i\" onclick=\"abrirRsvp('"+r.id+"')\">Edit</button><button class=\"btn btn-del\" onclick=\"pConfirm('Eliminar reserva?','La fecha quedara disponible.',function(){delRsvp('"+r.id+"');})\">Del</button></div></div>";
+    return "<div class=\"rv-card "+ps+"\" id=\"rsvp-"+r.id+"\" style=\""+(pasada?"opacity:.6":"")+"\"><div class=\"rv-info\"><div class=\"rv-h\">"+r.huesped+"</div><div class=\"rv-f\">"+ef+" &rarr; "+sf+" &middot; "+n+" noche"+(n!==1?"s":"")+"</div><div class=\"rv-m\">"+depBadge+"<span class=\"badge\">$"+r.precio.toLocaleString("es-MX")+" MXN</span><span class=\"badge\">"+r.personas+" pers</span>"+(r.deposito?"<span class=\"badge\">Dep $"+r.deposito.toLocaleString("es-MX")+"</span>":"")+(r.numAirbnb?"<span class=\"badge\">"+r.numAirbnb+"</span>":"")+"</div><div class=\"rv-m\">"+pb+"</div>"+pa+"<div class=\"wa-row\"><button class=\"btn btn-pdf\" onclick=\"generarPDF('"+r.id+"','huesped')\">PDF Huesped</button><button class=\"btn btn-pdf\" onclick=\"generarPDF('"+r.id+"','llaves')\">PDF Llaves</button><button class=\"btn btn-pdf\" onclick=\"generarPDF('"+r.id+"','admin')\">PDF Admin</button><button class=\"btn btn-warn\" onclick=\"genPDFReservacion('"+r.id+"')\" id=\"btn-rpdf-"+r.id+"\">"+(r.pdfLink?"PDF generado":"PDF Reservacion")+"</button>"+(r.pdfLink?"<a href=\\\""+r.pdfLink+"\\\" target=\\\"_blank\\\" style=\\\"font-size:11px;color:var(--i);margin-left:4px\\\">Ver</a>":"")+"</div><div class=\"wa-row\"><button class=\"btn btn-wa\" onclick=\"enviarWA('"+r.id+"','huesped')\">WA Huesped"+(m.huesped?" OK":"")+"</button><button class=\"btn btn-wa\" onclick=\"enviarWA('"+r.id+"','llaves')\">WA Llaves"+(m.llaves?" OK":"")+"</button><button class=\"btn btn-wa\" onclick=\"enviarWA('"+r.id+"','admin')\">WA Admin"+(m.admin?" OK":"")+"</button></div><div style=\"font-size:10px;color:"+msgColor+";margin-top:5px;font-weight:500\">"+msgTxt+"</div>"+(r.notas?"<div style=\"font-size:11px;color:var(--text3);margin-top:4px\">"+r.notas+"</div>":"")+"</div><div class=\"rv-actions\"><button class=\"btn btn-i\" onclick=\"abrirRsvp('"+r.id+"')\">Edit</button><button class=\"btn btn-del\" onclick=\"pConfirm('Eliminar reserva?','La fecha quedara disponible.',function(){delRsvp('"+r.id+"');})\">Del</button></div></div>";
   }).join("");
 }
 
@@ -277,7 +364,7 @@ async function genPDFReservacion(id){
     if(result.ok&&result.link){
       var i=rsvps.findIndex(function(x){return x.id===id;});
       if(i>=0){rsvps[i].pdfLink=result.link;sv("rsvp_v6",rsvps);}
-      if(btn){btn.textContent="PDF listo";btn.disabled=false;}
+      if(btn){btn.textContent="PDF generado";btn.disabled=false;}
       window.open(result.link,"_blank");
     } else throw new Error(result.error||"Error");
   } catch(e){
@@ -664,12 +751,12 @@ function renderAlertas(){
   limpiarAparts();
   var apExp=aparts.filter(function(a){var h=(a.expira-Date.now())/3600000;return h<6&&h>0;});
   var msgPend=rsvps.filter(function(r){return msgPendiente(r)&&r.salida>=hoy;});
-  if(salHoy.length)als.push("<div class=\"al al-hoy\">Check-out hoy: "+salHoy.map(function(r){return r.huesped;}).join(", ")+"</div>");
-  if(llegHoy.length)als.push("<div class=\"al al-hoy\">Llegadas hoy: "+llegHoy.map(function(r){return r.huesped;}).join(", ")+"</div>");
-  if(llegMan.length)als.push("<div class=\"al al-man\">Llegadas manana: "+llegMan.map(function(r){return r.huesped;}).join(", ")+"</div>");
-  if(pend.length)als.push("<div class=\"al al-pago\">"+pend.length+" pago(s) pendiente(s): $"+pend.reduce(function(s,r){return s+r.precio;},0).toLocaleString("es-MX")+" MXN</div>");
-  if(apExp.length)als.push("<div class=\"al al-ap\">"+apExp.length+" apartado(s) por vencer: "+apExp.map(function(a){return a.nombre;}).join(", ")+"</div>");
-  if(msgPend.length)als.push("<div class=\"al al-man\">"+msgPend.length+" reserva(s) con mensajes pendientes</div>");
+  if(salHoy.length)als.push("<div class=\"al al-hoy al-click\" onclick=\"verSalidasHoy()\">Check-out hoy: "+salHoy.map(function(r){return r.huesped;}).join(", ")+"</div>");
+  if(llegHoy.length)als.push("<div class=\"al al-hoy al-click\" onclick=\"verLlegadasHoy()\">Llegadas hoy: "+llegHoy.map(function(r){return r.huesped;}).join(", ")+"</div>");
+  if(llegMan.length)als.push("<div class=\"al al-man al-click\" onclick=\"verLlegadasManana()\">Llegadas manana: "+llegMan.map(function(r){return r.huesped;}).join(", ")+"</div>");
+  if(pend.length)als.push("<div class=\"al al-pago al-click\" onclick=\"verPorCobrar()\">"+pend.length+" pago(s) pendiente(s): $"+pend.reduce(function(s,r){return s+r.precio;},0).toLocaleString("es-MX")+" MXN</div>");
+  if(apExp.length)als.push("<div class=\"al al-ap al-click\" onclick=\"verApartadosPorVencer()\">"+apExp.length+" apartado(s) por vencer: "+apExp.map(function(a){return a.nombre;}).join(", ")+"</div>");
+  if(msgPend.length)als.push("<div class=\"al al-man al-click\" onclick=\"verMensajesPendientes()\">"+msgPend.length+" reserva(s) con mensajes pendientes</div>");
   document.getElementById("alertas-wrap").innerHTML=als.join("");
 }
 function renderStats(){
@@ -677,7 +764,7 @@ function renderStats(){
   var iM=rsvps.filter(function(r){return r.entrada.startsWith(ms);}).reduce(function(s,r){return s+r.precio;},0);
   var pend=rsvps.filter(function(r){return (r.pago||"pendiente")==="pendiente"&&r.salida>=fechaHoy();});
   var prox=rsvps.filter(function(r){return r.salida>=fechaHoy();}).length;
-  document.getElementById("stats").innerHTML="<div class=\"sc\"><div class=\"sc-l\">Deptos</div><div class=\"sc-v\">"+deps.length+"</div><div class=\"sc-s\">activos</div></div><div class=\"sc\"><div class=\"sc-l\">Proximas llegadas</div><div class=\"sc-v\">"+prox+"</div><div class=\"sc-s\">reservadas</div></div><div class=\"sc\"><div class=\"sc-l\">Ingresos este mes</div><div class=\"sc-v\" style=\"color:var(--s)\">$"+iM.toLocaleString("es-MX")+"</div><div class=\"sc-s\">MXN</div></div><div class=\"sc\"><div class=\"sc-l\">Por cobrar</div><div class=\"sc-v\" style=\""+(pend.length?"color:var(--w)":"")+"\">$"+pend.reduce(function(s,r){return s+r.precio;},0).toLocaleString("es-MX")+"</div><div class=\"sc-s\">"+pend.length+" pendiente"+(pend.length!==1?"s":"")+"</div></div><div class=\"sc\"><div class=\"sc-l\">Apartados activos</div><div class=\"sc-v\" style=\"color:#7c3aed\">"+aparts.length+"</div><div class=\"sc-s\">en espera</div></div>";
+  document.getElementById("stats").innerHTML="<div class=\"sc sc-click\" onclick=\"verDeptos()\"><div class=\"sc-l\">Deptos</div><div class=\"sc-v\">"+deps.length+"</div><div class=\"sc-s\">activos</div></div><div class=\"sc sc-click\" onclick=\"verProximasLlegadas()\"><div class=\"sc-l\">Proximas llegadas</div><div class=\"sc-v\">"+prox+"</div><div class=\"sc-s\">reservadas</div></div><div class=\"sc sc-click\" onclick=\"verIngresosMes()\"><div class=\"sc-l\">Ingresos este mes</div><div class=\"sc-v\" style=\"color:var(--s)\">$"+iM.toLocaleString("es-MX")+"</div><div class=\"sc-s\">MXN</div></div><div class=\"sc sc-click\" onclick=\"verPorCobrar()\"><div class=\"sc-l\">Por cobrar</div><div class=\"sc-v\" style=\""+(pend.length?"color:var(--w)":"")+"\">$"+pend.reduce(function(s,r){return s+r.precio;},0).toLocaleString("es-MX")+"</div><div class=\"sc-s\">"+pend.length+" pendiente"+(pend.length!==1?"s":"")+"</div></div><div class=\"sc sc-click\" onclick=\"verApartados()\"><div class=\"sc-l\">Apartados activos</div><div class=\"sc-v\" style=\"color:#7c3aed\">"+aparts.length+"</div><div class=\"sc-s\">en espera</div></div>";
 }
 
 // MODAL RESERVA
