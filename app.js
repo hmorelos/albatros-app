@@ -18,6 +18,7 @@ function parseMonto(v){
   return parseFloat(t)||0;
 }
 function saldoPendienteRsvp(r){return Math.max(0,(parseFloat(r.precio)||0)-(parseFloat(r.deposito)||0));}
+function rsvpConAdeudo(r){return (r.pago||"pendiente")!=="liquidada"&&saldoPendienteRsvp(r)>0;}
 function totalPorCobrar(list){return list.reduce(function(s,r){return s+saldoPendienteRsvp(r);},0);}
 
 function aplicarTpl(tpl,r){
@@ -249,7 +250,8 @@ function renderRsvp(){
   var f=rsvps.filter(function(r){return fd==="todos"||r.dep===fd;});
   if(fe==="prox")f=f.filter(function(r){return r.salida>=hoy;});
   if(fe==="pas")f=f.filter(function(r){return r.salida<hoy;});
-  if(fp!=="todos")f=f.filter(function(r){return (r.pago||"pendiente")===fp;});
+  if(fp==="pendiente")f=f.filter(rsvpConAdeudo);
+  else if(fp!=="todos")f=f.filter(function(r){return (r.pago||"pendiente")===fp;});
   if(fm==="pendmsg")f=f.filter(function(r){return msgPendiente(r)&&r.salida>=hoy;});
   if(fm==="enviados")f=f.filter(function(r){return !msgPendiente(r);});
   f.sort(function(a,b){return a.entrada.localeCompare(b.entrada);});
@@ -274,7 +276,7 @@ function renderRsvp(){
 function cambiarPago(id,estado){
   var i=rsvps.findIndex(function(r){return r.id===id;});if(i<0)return;
   if(estado==="parcial"){var m=prompt("Cuanto es el anticipo? (MXN)");if(m===null)return;rsvps[i].anticipo=parseFloat(m)||0;}
-  rsvps[i].pago=estado;sv("rsvp_v6",rsvps);renderRsvp();renderStats();
+  rsvps[i].pago=estado;sv("rsvp_v6",rsvps);renderTodo();
 }
 function delRsvp(id){rsvps=rsvps.filter(function(x){return x.id!==id;});sv("rsvp_v6",rsvps);renderTodo();triggerIcalUpdate();}
 
@@ -538,7 +540,7 @@ function renderRes(){
   var mNow=new Date().getMonth();
   var iM=serie[mNow]?serie[mNow].ing:0;
   var eM=serie[mNow]?serie[mNow].egr:0;
-  var pc=totalPorCobrar(rsvps.filter(function(r){return (r.pago||"pendiente")==="pendiente";}));
+  var pc=totalPorCobrar(rsvps.filter(rsvpConAdeudo));
   var lineChart=buildFinLineChart(serie);
   var cats={};egrs.forEach(function(e){cats[e.cat]=(cats[e.cat]||0)+e.monto;});
   var catR=Object.entries(cats).sort(function(a,b){return b[1]-a[1];}).map(function(e){return "<tr><td>"+e[0]+"</td><td class=\"amt-e\">$"+e[1].toLocaleString("es-MX")+"</td></tr>";}).join("");
@@ -896,7 +898,7 @@ function renderAlertas(){
   var salHoy=rsvps.filter(function(r){return r.salida===hoy;});
   var llegHoy=rsvps.filter(function(r){return r.entrada===hoy;});
   var llegMan=rsvps.filter(function(r){return r.entrada===manS;});
-  var pend=rsvps.filter(function(r){return (r.pago||"pendiente")==="pendiente";});
+  var pend=rsvps.filter(rsvpConAdeudo);
   limpiarAparts();
   var apExp=aparts.filter(function(a){var h=(a.expira-Date.now())/3600000;return h<6&&h>0;});
   var msgPend=rsvps.filter(function(r){return msgPendiente(r)&&r.salida>=hoy;});
@@ -911,7 +913,7 @@ function renderAlertas(){
 function renderStats(){
   var h=new Date(),ms=h.getFullYear()+"-"+String(h.getMonth()+1).padStart(2,"0");
   var iM=rsvps.filter(function(r){return r.entrada.startsWith(ms);}).reduce(function(s,r){return s+r.precio;},0);
-  var pend=rsvps.filter(function(r){return (r.pago||"pendiente")==="pendiente";});
+  var pend=rsvps.filter(rsvpConAdeudo);
   var prox=rsvps.filter(function(r){return r.salida>=fechaHoy();}).length;
   document.getElementById("stats").innerHTML="<div class=\"sc sc-click\" onclick=\"verDeptos()\"><div class=\"sc-l\">Deptos</div><div class=\"sc-v\">"+deps.length+"</div><div class=\"sc-s\">activos</div></div><div class=\"sc sc-click\" onclick=\"verProximasLlegadas()\"><div class=\"sc-l\">Proximas llegadas</div><div class=\"sc-v\">"+prox+"</div><div class=\"sc-s\">reservadas</div></div><div class=\"sc sc-click\" onclick=\"verIngresosMes()\"><div class=\"sc-l\">Ingresos este mes</div><div class=\"sc-v\" style=\"color:var(--s)\">$"+iM.toLocaleString("es-MX")+"</div><div class=\"sc-s\">MXN</div></div><div class=\"sc sc-click\" onclick=\"verPorCobrar()\"><div class=\"sc-l\">Por cobrar</div><div class=\"sc-v\" style=\""+(pend.length?"color:var(--w)":"")+"\">$"+totalPorCobrar(pend).toLocaleString("es-MX")+"</div><div class=\"sc-s\">"+pend.length+" pendiente"+(pend.length!==1?"s":"")+"</div></div><div class=\"sc sc-click\" onclick=\"verApartados()\"><div class=\"sc-l\">Apartados activos</div><div class=\"sc-v\" style=\"color:#7c3aed\">"+aparts.length+"</div><div class=\"sc-s\">en espera</div></div>";
 }
