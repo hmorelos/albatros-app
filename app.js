@@ -4,6 +4,7 @@
 var mes=new Date().getMonth(),ano=new Date().getFullYear();
 var editRsvp=null,editEgr=null,editDep=null,confirmCb=null,colorSel=COLORES[0],tabAct="cal",finTabAct="res",focusTpl=null;
 var depById=function(id){return normDep(deps.find(function(d){return d.id===id;}));};
+var WA_REPORTE_NUM="524431702533";
 
 var toggleAnticipo=function(){document.getElementById("fg-anticipo").style.display=document.getElementById("f-pago").value==="parcial"?"":"none";};
 var updateColor=function(){var o=document.getElementById("f-origen").value;document.getElementById("f-color").value=COL_ORIG[o]||"#185FA5";document.getElementById("color-lbl").textContent=COL_LAB[o]||"";};
@@ -11,6 +12,8 @@ function fechaHoy(){var d=new Date();return d.getFullYear()+"-"+String(d.getMont
 function fmtD(s){return new Date(s+"T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});}
 function fmtDL(s){return new Date(s+"T12:00:00").toLocaleDateString("es-MX",{weekday:"long",year:"numeric",month:"long",day:"numeric"});}
 function noches(e,s){return Math.round((new Date(s)-new Date(e))/86400000);}
+function saldoPendienteRsvp(r){return Math.max(0,(parseFloat(r.precio)||0)-(parseFloat(r.deposito)||0));}
+function totalPorCobrar(list){return list.reduce(function(s,r){return s+saldoPendienteRsvp(r);},0);}
 
 function aplicarTpl(tpl,r){
   var dep=depById(r.dep)||{};
@@ -507,15 +510,17 @@ function buildFinLineChart(serie){
   var vals=[];
   serie.forEach(function(r){vals.push(r.ing,r.egr,r.balance,r.util);});
   var minV=Math.min.apply(null,vals.concat([0])),maxV=Math.max.apply(null,vals.concat([1]));
-  var W=900,H=300,padL=56,padR=18,padT=16,padB=42;
+  var W=900,H=360,padL=62,padR=18,padT=18,padB=28;
   var plotW=W-padL-padR,plotH=H-padT-padB;
-  function xAt(i){return serie.length===1?padL+plotW/2:padL+(i/(serie.length-1))*plotW;}
-  function yAt(v){if(maxV===minV)return padT+plotH/2;return padT+((maxV-v)/(maxV-minV))*plotH;}
-  function pathBy(k){return serie.map(function(r,i){return (i?"L":"M")+xAt(i).toFixed(1)+" "+yAt(r[k]).toFixed(1);}).join(" ");}
-  var zeroY=yAt(0).toFixed(1);
-  var pts=function(k,c){return serie.map(function(r,i){return "<circle cx=\""+xAt(i).toFixed(1)+"\" cy=\""+yAt(r[k]).toFixed(1)+"\" r=\"3\" fill=\""+c+"\"></circle>";}).join("");};
-  var xLbls=serie.map(function(r,i){return "<text x=\""+xAt(i).toFixed(1)+"\" y=\""+(H-14)+"\" text-anchor=\"middle\" font-size=\"10\" fill=\"#777\">"+r.label+"</text>";}).join("");
-  return "<div style=\"background:var(--bg);border:.5px solid var(--border);border-radius:var(--rlg);padding:10px;overflow-x:auto\"><svg viewBox=\"0 0 "+W+" "+H+"\" width=\"100%\" height=\"300\" role=\"img\" aria-label=\"Grafica lineal de finanzas\"><line x1=\""+padL+"\" y1=\""+zeroY+"\" x2=\""+(W-padR)+"\" y2=\""+zeroY+"\" stroke=\"#cfcfcf\" stroke-width=\"1\" stroke-dasharray=\"4 3\"></line><line x1=\""+padL+"\" y1=\""+padT+"\" x2=\""+padL+"\" y2=\""+(H-padB)+"\" stroke=\"#ddd\" stroke-width=\"1\"></line><line x1=\""+padL+"\" y1=\""+(H-padB)+"\" x2=\""+(W-padR)+"\" y2=\""+(H-padB)+"\" stroke=\"#ddd\" stroke-width=\"1\"></line><path d=\""+pathBy("ing")+"\" fill=\"none\" stroke=\"#2e7d32\" stroke-width=\"3\"></path><path d=\""+pathBy("egr")+"\" fill=\"none\" stroke=\"#b91c1c\" stroke-width=\"3\"></path><path d=\""+pathBy("balance")+"\" fill=\"none\" stroke=\"#b45309\" stroke-width=\"3\"></path><path d=\""+pathBy("util")+"\" fill=\"none\" stroke=\"#1565c0\" stroke-width=\"3\"></path>"+pts("ing","#2e7d32")+pts("egr","#b91c1c")+pts("balance","#b45309")+pts("util","#1565c0")+xLbls+"</svg></div>";
+  function xAt(v){if(maxV===minV)return padL+plotW/2;return padL+((v-minV)/(maxV-minV))*plotW;}
+  function yAt(i){return serie.length===1?padT+plotH/2:padT+(i/(serie.length-1))*plotH;}
+  function pathBy(k){return serie.map(function(r,i){return (i?"L":"M")+xAt(r[k]).toFixed(1)+" "+yAt(i).toFixed(1);}).join(" ");}
+  var zeroX=xAt(0).toFixed(1);
+  var pts=function(k,c){return serie.map(function(r,i){return "<circle cx=\""+xAt(r[k]).toFixed(1)+"\" cy=\""+yAt(i).toFixed(1)+"\" r=\"3\" fill=\""+c+"\"></circle>";}).join("");};
+  var yLbls=serie.map(function(r,i){return "<text x=\""+(padL-8)+"\" y=\""+(yAt(i)+3).toFixed(1)+"\" text-anchor=\"end\" font-size=\"10\" fill=\"#777\">"+r.label+"</text>";}).join("");
+  var xMinLbl="<text x=\""+padL+"\" y=\""+(H-8)+"\" text-anchor=\"start\" font-size=\"10\" fill=\"#777\">$"+Math.round(minV).toLocaleString("es-MX")+"</text>";
+  var xMaxLbl="<text x=\""+(W-padR)+"\" y=\""+(H-8)+"\" text-anchor=\"end\" font-size=\"10\" fill=\"#777\">$"+Math.round(maxV).toLocaleString("es-MX")+"</text>";
+  return "<div style=\"background:var(--bg);border:.5px solid var(--border);border-radius:var(--rlg);padding:10px;overflow-x:auto\"><svg viewBox=\"0 0 "+W+" "+H+"\" width=\"100%\" height=\"360\" role=\"img\" aria-label=\"Grafica lineal de finanzas con ejes invertidos\"><line x1=\""+zeroX+"\" y1=\""+padT+"\" x2=\""+zeroX+"\" y2=\""+(H-padB)+"\" stroke=\"#cfcfcf\" stroke-width=\"1\" stroke-dasharray=\"4 3\"></line><line x1=\""+padL+"\" y1=\""+padT+"\" x2=\""+padL+"\" y2=\""+(H-padB)+"\" stroke=\"#ddd\" stroke-width=\"1\"></line><line x1=\""+padL+"\" y1=\""+(H-padB)+"\" x2=\""+(W-padR)+"\" y2=\""+(H-padB)+"\" stroke=\"#ddd\" stroke-width=\"1\"></line><path d=\""+pathBy("ing")+"\" fill=\"none\" stroke=\"#2e7d32\" stroke-width=\"3\"></path><path d=\""+pathBy("egr")+"\" fill=\"none\" stroke=\"#b91c1c\" stroke-width=\"3\"></path><path d=\""+pathBy("balance")+"\" fill=\"none\" stroke=\"#b45309\" stroke-width=\"3\"></path><path d=\""+pathBy("util")+"\" fill=\"none\" stroke=\"#1565c0\" stroke-width=\"3\"></path>"+pts("ing","#2e7d32")+pts("egr","#b91c1c")+pts("balance","#b45309")+pts("util","#1565c0")+yLbls+xMinLbl+xMaxLbl+"</svg></div>";
 }
 function renderRes(){
   var el=document.getElementById("ft-res");
@@ -528,7 +533,7 @@ function renderRes(){
   var mNow=new Date().getMonth();
   var iM=serie[mNow]?serie[mNow].ing:0;
   var eM=serie[mNow]?serie[mNow].egr:0;
-  var pc=rsvps.filter(function(r){return (r.pago||"pendiente")==="pendiente";}).reduce(function(s,r){return s+r.precio;},0);
+  var pc=totalPorCobrar(rsvps.filter(function(r){return (r.pago||"pendiente")==="pendiente";}));
   var lineChart=buildFinLineChart(serie);
   var cats={};egrs.forEach(function(e){cats[e.cat]=(cats[e.cat]||0)+e.monto;});
   var catR=Object.entries(cats).sort(function(a,b){return b[1]-a[1];}).map(function(e){return "<tr><td>"+e[0]+"</td><td class=\"amt-e\">$"+e[1].toLocaleString("es-MX")+"</td></tr>";}).join("");
@@ -582,7 +587,7 @@ function renderDepto(){
   var ale=resumen.ing*0.4,hector=resumen.ing*0.2;
   var chart=buildFinLineChart(serie);
   var det=serie.map(function(r){return "<div style=\"display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:6px 0;border-bottom:.5px solid var(--border)\"><span>"+fmtMes(r.mes)+"</span><span style=\"color:var(--s)\">Ing $"+r.ing.toLocaleString("es-MX")+"</span><span style=\"color:var(--d)\">Egr $"+r.egr.toLocaleString("es-MX")+"</span><span style=\"color:var(--w)\">Bal $"+r.balance.toLocaleString("es-MX")+"</span><span style=\"color:var(--i)\">Uti $"+r.util.toLocaleString("es-MX")+"</span></div>";}).join("");
-  el.innerHTML="<div class=\"filtros\" style=\"margin-bottom:12px;justify-content:space-between\"><div style=\"display:flex;gap:8px;flex-wrap:wrap\"><select class=\"fi\" id=\"fil-depto-dep\" onchange=\"renderDepto()\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+depOpts+"</select><select class=\"fi\" id=\"fil-depto-year\" onchange=\"renderDepto()\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+yearOpts+"</select><select class=\"fi\" id=\"fil-depto-pdf-mes\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+mesOpts+"</select></div><button class=\"btn btn-pdf\" onclick=\"pdfFinanzasMesDepto()\">PDF mensual</button></div><div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:var(--text2)\"><span><span style=\"color:#2e7d32\">●</span> Ingresos</span><span><span style=\"color:#b91c1c\">●</span> Egresos</span><span><span style=\"color:#b45309\">●</span> Balance</span><span><span style=\"color:#1565c0\">●</span> Utilidad</span></div><div class=\"rg\"><div class=\"rc\"><div class=\"rc-l\">Ingresos</div><div class=\"rc-v\" style=\"color:var(--s);font-size:16px\">$"+resumen.ing.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Egresos</div><div class=\"rc-v\" style=\"color:var(--d);font-size:16px\">$"+resumen.egr.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Balance</div><div class=\"rc-v\" style=\"color:"+(resumen.balance>=0?"var(--w)":"var(--d)")+";font-size:16px\">$"+resumen.balance.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Utilidad</div><div class=\"rc-v\" style=\"color:var(--i);font-size:16px\">$"+resumen.util.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Ale 40%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+ale.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Hector 20%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+hector.toLocaleString("es-MX")+"</div></div></div>"+chart+"<div style=\"margin-top:12px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--rlg);padding:10px\">"+det+"</div>";
+  el.innerHTML="<div class=\"filtros\" style=\"margin-bottom:12px;justify-content:space-between\"><div style=\"display:flex;gap:8px;flex-wrap:wrap\"><select class=\"fi\" id=\"fil-depto-dep\" onchange=\"renderDepto()\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+depOpts+"</select><select class=\"fi\" id=\"fil-depto-year\" onchange=\"renderDepto()\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+yearOpts+"</select><select class=\"fi\" id=\"fil-depto-pdf-mes\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+mesOpts+"</select></div><div style=\"display:flex;gap:8px;flex-wrap:wrap\"><button class=\"btn btn-pdf\" onclick=\"pdfFinanzasMesDepto()\">PDF mensual</button><button class=\"btn btn-wa\" onclick=\"enviarPdfFinanzasWA()\">Enviar WA</button></div></div><div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:var(--text2)\"><span><span style=\"color:#2e7d32\">●</span> Ingresos</span><span><span style=\"color:#b91c1c\">●</span> Egresos</span><span><span style=\"color:#b45309\">●</span> Balance</span><span><span style=\"color:#1565c0\">●</span> Utilidad</span></div><div class=\"rg\"><div class=\"rc\"><div class=\"rc-l\">Ingresos</div><div class=\"rc-v\" style=\"color:var(--s);font-size:16px\">$"+resumen.ing.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Egresos</div><div class=\"rc-v\" style=\"color:var(--d);font-size:16px\">$"+resumen.egr.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Balance</div><div class=\"rc-v\" style=\"color:"+(resumen.balance>=0?"var(--w)":"var(--d)")+";font-size:16px\">$"+resumen.balance.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Utilidad</div><div class=\"rc-v\" style=\"color:var(--i);font-size:16px\">$"+resumen.util.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Ale 40%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+ale.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Hector 20%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+hector.toLocaleString("es-MX")+"</div></div></div>"+chart+"<div style=\"margin-top:12px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--rlg);padding:10px\">"+det+"</div>";
   var depSelEl=document.getElementById("fil-depto-dep");
   if(depSelEl)depSelEl.value=depSel;
   var ySelEl2=document.getElementById("fil-depto-year");
@@ -629,6 +634,14 @@ function pdfFinanzasMesDepto(){
   y+=4;doc.line(14,y,196,y);y+=8;doc.setFont("helvetica","bold");
   doc.text("Totales",14,y);doc.text(money(resumen.ing),92,y,{align:"right"});doc.text(money(resumen.egr),128,y,{align:"right"});doc.text(money(resumen.balance),164,y,{align:"right"});doc.text(utilidadPct.toFixed(1)+"%",196,y,{align:"right"});
   doc.save("finanzas-"+mes+".pdf");
+}
+function enviarPdfFinanzasWA(){
+  var sel=document.getElementById("fil-depto-pdf-mes");
+  var mes=sel?sel.value:"todos";
+  if(!mes||mes==="todos"){alert("Selecciona un mes para generar y enviar");return;}
+  pdfFinanzasMesDepto();
+  var msg="Te envio el PDF de finanzas de "+fmtMes(mes)+". Ya se genero en esta app, lo adjunto en este chat.";
+  window.open("https://wa.me/"+WA_REPORTE_NUM+"?text="+encodeURIComponent(msg),"_blank");
 }
 
 // ASEO
@@ -885,7 +898,7 @@ function renderAlertas(){
   if(salHoy.length)als.push("<div class=\"al al-hoy al-click\" onclick=\"verSalidasHoy()\">Check-out hoy: "+salHoy.map(function(r){return r.huesped;}).join(", ")+"</div>");
   if(llegHoy.length)als.push("<div class=\"al al-hoy al-click\" onclick=\"verLlegadasHoy()\">Llegadas hoy: "+llegHoy.map(function(r){return r.huesped;}).join(", ")+"</div>");
   if(llegMan.length)als.push("<div class=\"al al-man al-click\" onclick=\"verLlegadasManana()\">Llegadas manana: "+llegMan.map(function(r){return r.huesped;}).join(", ")+"</div>");
-  if(pend.length)als.push("<div class=\"al al-pago al-click\" onclick=\"verPorCobrar()\">"+pend.length+" pago(s) pendiente(s): $"+pend.reduce(function(s,r){return s+r.precio;},0).toLocaleString("es-MX")+" MXN</div>");
+  if(pend.length)als.push("<div class=\"al al-pago al-click\" onclick=\"verPorCobrar()\">"+pend.length+" pago(s) pendiente(s): $"+totalPorCobrar(pend).toLocaleString("es-MX")+" MXN</div>");
   if(apExp.length)als.push("<div class=\"al al-ap al-click\" onclick=\"verApartadosPorVencer()\">"+apExp.length+" apartado(s) por vencer: "+apExp.map(function(a){return a.nombre;}).join(", ")+"</div>");
   if(msgPend.length)als.push("<div class=\"al al-man al-click\" onclick=\"verMensajesPendientes()\">"+msgPend.length+" reserva(s) con mensajes pendientes</div>");
   document.getElementById("alertas-wrap").innerHTML=als.join("");
@@ -895,7 +908,7 @@ function renderStats(){
   var iM=rsvps.filter(function(r){return r.entrada.startsWith(ms);}).reduce(function(s,r){return s+r.precio;},0);
   var pend=rsvps.filter(function(r){return (r.pago||"pendiente")==="pendiente";});
   var prox=rsvps.filter(function(r){return r.salida>=fechaHoy();}).length;
-  document.getElementById("stats").innerHTML="<div class=\"sc sc-click\" onclick=\"verDeptos()\"><div class=\"sc-l\">Deptos</div><div class=\"sc-v\">"+deps.length+"</div><div class=\"sc-s\">activos</div></div><div class=\"sc sc-click\" onclick=\"verProximasLlegadas()\"><div class=\"sc-l\">Proximas llegadas</div><div class=\"sc-v\">"+prox+"</div><div class=\"sc-s\">reservadas</div></div><div class=\"sc sc-click\" onclick=\"verIngresosMes()\"><div class=\"sc-l\">Ingresos este mes</div><div class=\"sc-v\" style=\"color:var(--s)\">$"+iM.toLocaleString("es-MX")+"</div><div class=\"sc-s\">MXN</div></div><div class=\"sc sc-click\" onclick=\"verPorCobrar()\"><div class=\"sc-l\">Por cobrar</div><div class=\"sc-v\" style=\""+(pend.length?"color:var(--w)":"")+"\">$"+pend.reduce(function(s,r){return s+r.precio;},0).toLocaleString("es-MX")+"</div><div class=\"sc-s\">"+pend.length+" pendiente"+(pend.length!==1?"s":"")+"</div></div><div class=\"sc sc-click\" onclick=\"verApartados()\"><div class=\"sc-l\">Apartados activos</div><div class=\"sc-v\" style=\"color:#7c3aed\">"+aparts.length+"</div><div class=\"sc-s\">en espera</div></div>";
+  document.getElementById("stats").innerHTML="<div class=\"sc sc-click\" onclick=\"verDeptos()\"><div class=\"sc-l\">Deptos</div><div class=\"sc-v\">"+deps.length+"</div><div class=\"sc-s\">activos</div></div><div class=\"sc sc-click\" onclick=\"verProximasLlegadas()\"><div class=\"sc-l\">Proximas llegadas</div><div class=\"sc-v\">"+prox+"</div><div class=\"sc-s\">reservadas</div></div><div class=\"sc sc-click\" onclick=\"verIngresosMes()\"><div class=\"sc-l\">Ingresos este mes</div><div class=\"sc-v\" style=\"color:var(--s)\">$"+iM.toLocaleString("es-MX")+"</div><div class=\"sc-s\">MXN</div></div><div class=\"sc sc-click\" onclick=\"verPorCobrar()\"><div class=\"sc-l\">Por cobrar</div><div class=\"sc-v\" style=\""+(pend.length?"color:var(--w)":"")+"\">$"+totalPorCobrar(pend).toLocaleString("es-MX")+"</div><div class=\"sc-s\">"+pend.length+" pendiente"+(pend.length!==1?"s":"")+"</div></div><div class=\"sc sc-click\" onclick=\"verApartados()\"><div class=\"sc-l\">Apartados activos</div><div class=\"sc-v\" style=\"color:#7c3aed\">"+aparts.length+"</div><div class=\"sc-s\">en espera</div></div>";
 }
 
 // MODAL RESERVA
