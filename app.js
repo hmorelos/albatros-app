@@ -475,24 +475,67 @@ function poblarMeses(){
   if(deps.find(function(d){return d.id===dv;}))ds.value=dv;
 }
 function renderFin(){poblarMeses();if(finTabAct==="res")renderRes();else if(finTabAct==="depto")renderDepto();else if(finTabAct==="aseo")renderAseo();else if(finTabAct==="ing")renderIng();else renderEgr();}
+
+function yearsDisp(){
+  var ys=new Set();
+  rsvps.forEach(function(r){ys.add(parseInt(r.entrada.slice(0,4),10));});
+  egrs.forEach(function(e){ys.add(parseInt(e.fecha.slice(0,4),10));});
+  if(!ys.size)ys.add(new Date().getFullYear());
+  return Array.from(ys).sort(function(a,b){return b-a;});
+}
+function mkMes(y,m){return y+"-"+String(m).padStart(2,"0");}
+function buildYearSeries(year,depSel){
+  var acum=0;
+  var serie=[];
+  for(var m=1;m<=12;m++){
+    var key=mkMes(year,m);
+    var ing=0,egr2=0;
+    if(depSel&&depSel!=="todos"){
+      ing=rsvps.filter(function(r){return r.dep===depSel&&r.entrada.startsWith(key);}).reduce(function(s,r){return s+r.precio;},0);
+      egr2=egrs.filter(function(e){return e.dep===depSel&&e.fecha.startsWith(key);}).reduce(function(s,e){return s+e.monto;},0);
+    } else {
+      ing=rsvps.filter(function(r){return r.entrada.startsWith(key);}).reduce(function(s,r){return s+r.precio;},0);
+      egr2=egrs.filter(function(e){return e.fecha.startsWith(key);}).reduce(function(s,e){return s+e.monto;},0);
+    }
+    var util=ing-egr2;
+    acum+=util;
+    serie.push({mes:key,ing:ing,egr:egr2,balance:acum,util:util,label:MESES[m-1].slice(0,3)});
+  }
+  return serie;
+}
+function buildFinLineChart(serie){
+  var vals=[];
+  serie.forEach(function(r){vals.push(r.ing,r.egr,r.balance,r.util);});
+  var minV=Math.min.apply(null,vals.concat([0])),maxV=Math.max.apply(null,vals.concat([1]));
+  var W=900,H=300,padL=56,padR=18,padT=16,padB=42;
+  var plotW=W-padL-padR,plotH=H-padT-padB;
+  function xAt(i){return serie.length===1?padL+plotW/2:padL+(i/(serie.length-1))*plotW;}
+  function yAt(v){if(maxV===minV)return padT+plotH/2;return padT+((maxV-v)/(maxV-minV))*plotH;}
+  function pathBy(k){return serie.map(function(r,i){return (i?"L":"M")+xAt(i).toFixed(1)+" "+yAt(r[k]).toFixed(1);}).join(" ");}
+  var zeroY=yAt(0).toFixed(1);
+  var pts=function(k,c){return serie.map(function(r,i){return "<circle cx=\""+xAt(i).toFixed(1)+"\" cy=\""+yAt(r[k]).toFixed(1)+"\" r=\"3\" fill=\""+c+"\"></circle>";}).join("");};
+  var xLbls=serie.map(function(r,i){return "<text x=\""+xAt(i).toFixed(1)+"\" y=\""+(H-14)+"\" text-anchor=\"middle\" font-size=\"10\" fill=\"#777\">"+r.label+"</text>";}).join("");
+  return "<div style=\"background:var(--bg);border:.5px solid var(--border);border-radius:var(--rlg);padding:10px;overflow-x:auto\"><svg viewBox=\"0 0 "+W+" "+H+"\" width=\"100%\" height=\"300\" role=\"img\" aria-label=\"Grafica lineal de finanzas\"><line x1=\""+padL+"\" y1=\""+zeroY+"\" x2=\""+(W-padR)+"\" y2=\""+zeroY+"\" stroke=\"#cfcfcf\" stroke-width=\"1\" stroke-dasharray=\"4 3\"></line><line x1=\""+padL+"\" y1=\""+padT+"\" x2=\""+padL+"\" y2=\""+(H-padB)+"\" stroke=\"#ddd\" stroke-width=\"1\"></line><line x1=\""+padL+"\" y1=\""+(H-padB)+"\" x2=\""+(W-padR)+"\" y2=\""+(H-padB)+"\" stroke=\"#ddd\" stroke-width=\"1\"></line><path d=\""+pathBy("ing")+"\" fill=\"none\" stroke=\"#2e7d32\" stroke-width=\"3\"></path><path d=\""+pathBy("egr")+"\" fill=\"none\" stroke=\"#b91c1c\" stroke-width=\"3\"></path><path d=\""+pathBy("balance")+"\" fill=\"none\" stroke=\"#b45309\" stroke-width=\"3\"></path><path d=\""+pathBy("util")+"\" fill=\"none\" stroke=\"#1565c0\" stroke-width=\"3\"></path>"+pts("ing","#2e7d32")+pts("egr","#b91c1c")+pts("balance","#b45309")+pts("util","#1565c0")+xLbls+"</svg></div>";
+}
 function renderRes(){
   var el=document.getElementById("ft-res");
-  var tI=rsvps.reduce(function(s,r){return s+r.precio;},0),tE=egrs.reduce(function(s,e){return s+e.monto;},0),util=tI-tE;
-  var h=new Date(),ms=h.getFullYear()+"-"+String(h.getMonth()+1).padStart(2,"0");
-  var iM=rsvps.filter(function(r){return r.entrada.startsWith(ms);}).reduce(function(s,r){return s+r.precio;},0);
-  var eM=egrs.filter(function(e){return e.fecha.startsWith(ms);}).reduce(function(s,e){return s+e.monto;},0);
+  var ys=yearsDisp();
+  var ySelEl=document.getElementById("fil-res-year");
+  var ySel=ySelEl?parseInt(ySelEl.value,10):ys[0];
+  if(!ys.includes(ySel))ySel=ys[0];
+  var serie=buildYearSeries(ySel,"todos");
+  var tI=serie.reduce(function(s,r){return s+r.ing;},0),tE=serie.reduce(function(s,r){return s+r.egr;},0),util=tI-tE;
+  var mNow=new Date().getMonth();
+  var iM=serie[mNow]?serie[mNow].ing:0;
+  var eM=serie[mNow]?serie[mNow].egr:0;
   var pc=rsvps.filter(function(r){return (r.pago||"pendiente")==="pendiente";}).reduce(function(s,r){return s+r.precio;},0);
-  var meses=mesesDisp().slice(0,6).reverse();
-  var maxV=Math.max.apply(null,meses.map(function(m){return Math.max(rsvps.filter(function(r){return r.entrada.startsWith(m);}).reduce(function(s,r){return s+r.precio;},0),egrs.filter(function(e){return e.fecha.startsWith(m);}).reduce(function(s,e){return s+e.monto;},0),1);}));
-  var barras=meses.map(function(m){
-    var p=m.split("-"),label=MESES[parseInt(p[1])-1].slice(0,3);
-    var ing=rsvps.filter(function(r){return r.entrada.startsWith(m);}).reduce(function(s,r){return s+r.precio;},0);
-    var egr2=egrs.filter(function(eg){return eg.fecha.startsWith(m);}).reduce(function(s,eg){return s+eg.monto;},0);
-    return "<div class=\"bar-row\"><div class=\"bar-lbl\">"+label+"</div><div style=\"flex:1;display:flex;flex-direction:column;gap:2px\"><div class=\"bar-track\"><div class=\"bar-fill bi\" style=\"width:"+Math.round(ing/maxV*100)+"%\">$"+(ing/1000).toFixed(0)+"k</div></div><div class=\"bar-track\"><div class=\"bar-fill be\" style=\"width:"+Math.round(egr2/maxV*100)+"%\">$"+(egr2/1000).toFixed(0)+"k</div></div></div></div>";
-  }).join("");
+  var lineChart=buildFinLineChart(serie);
   var cats={};egrs.forEach(function(e){cats[e.cat]=(cats[e.cat]||0)+e.monto;});
   var catR=Object.entries(cats).sort(function(a,b){return b[1]-a[1];}).map(function(e){return "<tr><td>"+e[0]+"</td><td class=\"amt-e\">$"+e[1].toLocaleString("es-MX")+"</td></tr>";}).join("");
-  el.innerHTML="<div class=\"rg\"><div class=\"rc\"><div class=\"rc-l\">Ingresos totales</div><div class=\"rc-v\" style=\"color:var(--s)\">$"+tI.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Egresos totales</div><div class=\"rc-v\" style=\"color:var(--d)\">$"+tE.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Utilidad neta</div><div class=\"rc-v\" style=\"color:"+(util>=0?"var(--s)":"var(--d)")+"\">$"+util.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Por cobrar</div><div class=\"rc-v\" style=\"color:var(--w)\">$"+pc.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Este mes (Ing/Egr)</div><div class=\"rc-v\" style=\"font-size:13px\"><span style=\"color:var(--s)\">$"+iM.toLocaleString("es-MX")+"</span> / <span style=\"color:var(--d)\">$"+eM.toLocaleString("es-MX")+"</span></div></div></div><div style=\"font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:500\">Ultimos 6 meses <span style=\"margin-left:8px;font-size:10px\"><span style=\"color:#3B6D11\">■</span> Ing <span style=\"color:#A32D2D;margin-left:4px\">■</span> Egr</span></div><div class=\"bar-chart\">"+barras+"</div>"+(catR?"<div style=\"font-size:11px;color:var(--text2);margin:1rem 0 8px;font-weight:500\">Egresos por categoria</div><table class=\"fin-table\"><thead><tr><th>Categoria</th><th>Total</th></tr></thead><tbody>"+catR+"</tbody></table>":"");
+  var yOpts=ys.map(function(y){return "<option value=\""+y+"\">"+y+"</option>";}).join("");
+  el.innerHTML="<div class=\"filtros\" style=\"margin-bottom:10px\"><select class=\"fi\" id=\"fil-res-year\" onchange=\"renderRes()\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+yOpts+"</select></div><div class=\"rg\"><div class=\"rc\"><div class=\"rc-l\">Ingresos totales</div><div class=\"rc-v\" style=\"color:var(--s)\">$"+tI.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Egresos totales</div><div class=\"rc-v\" style=\"color:var(--d)\">$"+tE.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Utilidad neta</div><div class=\"rc-v\" style=\"color:"+(util>=0?"var(--s)":"var(--d)")+"\">$"+util.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Por cobrar</div><div class=\"rc-v\" style=\"color:var(--w)\">$"+pc.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Este mes (Ing/Egr)</div><div class=\"rc-v\" style=\"font-size:13px\"><span style=\"color:var(--s)\">$"+iM.toLocaleString("es-MX")+"</span> / <span style=\"color:var(--d)\">$"+eM.toLocaleString("es-MX")+"</span></div></div></div><div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;font-size:11px;color:var(--text2)\"><span><span style=\"color:#2e7d32\">●</span> Ingresos</span><span><span style=\"color:#b91c1c\">●</span> Egresos</span><span><span style=\"color:#b45309\">●</span> Balance</span><span><span style=\"color:#1565c0\">●</span> Utilidad</span></div>"+lineChart+(catR?"<div style=\"font-size:11px;color:var(--text2);margin:1rem 0 8px;font-weight:500\">Egresos por categoria</div><table class=\"fin-table\"><thead><tr><th>Categoria</th><th>Total</th></tr></thead><tbody>"+catR+"</tbody></table>":"");
+  var ySelEl2=document.getElementById("fil-res-year");
+  if(ySelEl2)ySelEl2.value=String(ySel);
 }
 function getGeneralEgrMes(mes){
   return egrs.filter(function(e){return (e.dep==="general"||!e.dep)&&e.fecha.startsWith(mes);}).reduce(function(s,e){return s+e.monto;},0);
@@ -520,50 +563,30 @@ function getDeptoResumen(rows){
     return acc;
   },{ing:0,egr:0,balance:0,ale:0,hector:0});
 }
-function getDeptoSeries(depSel){
-  var meses=mesesDisp().slice().reverse();
-  return meses.map(function(mes){
-    var ing=0,egr2=0;
-    if(depSel==="todos"){
-      ing=rsvps.filter(function(r){return r.entrada.startsWith(mes);}).reduce(function(s,r){return s+r.precio;},0);
-      egr2=egrs.filter(function(e){return e.fecha.startsWith(mes);}).reduce(function(s,e){return s+e.monto;},0);
-    } else {
-      ing=rsvps.filter(function(r){return r.dep===depSel&&r.entrada.startsWith(mes);}).reduce(function(s,r){return s+r.precio;},0);
-      egr2=egrs.filter(function(e){return e.dep===depSel&&e.fecha.startsWith(mes);}).reduce(function(s,e){return s+e.monto;},0);
-    }
-    return {mes:mes,ing:ing,egr:egr2,balance:ing-egr2};
-  });
-}
 function renderDepto(){
   var el=document.getElementById("ft-depto");
   var meses=mesesDisp();
+  var ys=yearsDisp();
   var depSelIn=document.getElementById("fil-depto-dep");
   var depSel=depSelIn?depSelIn.value:"todos";
+  var ySelIn=document.getElementById("fil-depto-year");
+  var ySel=ySelIn?parseInt(ySelIn.value,10):ys[0];
+  if(!ys.includes(ySel))ySel=ys[0];
   var pdfSelIn=document.getElementById("fil-depto-pdf-mes");
   var pdfMesSel=pdfSelIn?pdfSelIn.value:(meses[0]||"todos");
   var depOpts="<option value=\"todos\">Todos los deptos</option>"+deps.map(function(d){return "<option value=\""+d.id+"\">"+d.nom+"</option>";}).join("");
   var mesOpts="<option value=\"todos\">Todos los meses</option>"+meses.map(function(m){return "<option value=\""+m+"\">"+fmtMes(m)+"</option>";}).join("");
-  var serie=getDeptoSeries(depSel);
-  var resumen=serie.reduce(function(acc,r){acc.ing+=r.ing;acc.egr+=r.egr;acc.balance+=r.balance;return acc;},{ing:0,egr:0,balance:0});
+  var yearOpts=ys.map(function(y){return "<option value=\""+y+"\">"+y+"</option>";}).join("");
+  var serie=buildYearSeries(ySel,depSel);
+  var resumen=serie.reduce(function(acc,r){acc.ing+=r.ing;acc.egr+=r.egr;acc.balance=r.balance;acc.util+=r.util;return acc;},{ing:0,egr:0,balance:0,util:0});
   var ale=resumen.ing*0.4,hector=resumen.ing*0.2;
-  var vals=[];
-  serie.forEach(function(r){vals.push(r.ing,r.egr,r.balance);});
-  var minV=Math.min.apply(null,vals.concat([0])),maxV=Math.max.apply(null,vals.concat([1]));
-  var W=820,H=280,padL=56,padR=18,padT=16,padB=40;
-  var plotW=W-padL-padR,plotH=H-padT-padB;
-  function xAt(i){return serie.length===1?padL+plotW/2:padL+(i/(serie.length-1))*plotW;}
-  function yAt(v){if(maxV===minV)return padT+plotH/2;return padT+((maxV-v)/(maxV-minV))*plotH;}
-  function pathBy(k){
-    return serie.map(function(r,i){return (i?"L":"M")+xAt(i).toFixed(1)+" "+yAt(r[k]).toFixed(1);}).join(" ");
-  }
-  var zeroY=yAt(0).toFixed(1);
-  var pts=function(k,c){return serie.map(function(r,i){return "<circle cx=\""+xAt(i).toFixed(1)+"\" cy=\""+yAt(r[k]).toFixed(1)+"\" r=\"3\" fill=\""+c+"\"></circle>";}).join("");};
-  var xLbls=serie.map(function(r,i){return "<text x=\""+xAt(i).toFixed(1)+"\" y=\""+(H-14)+"\" text-anchor=\"middle\" font-size=\"10\" fill=\"#777\">"+MESES[parseInt(r.mes.slice(5,7),10)-1].slice(0,3)+"</text>";}).join("");
-  var chart=serie.length?"<div style=\"background:var(--bg);border:.5px solid var(--border);border-radius:var(--rlg);padding:10px;overflow-x:auto\"><svg viewBox=\"0 0 "+W+" "+H+"\" width=\"100%\" height=\"280\" role=\"img\" aria-label=\"Grafica lineal de ingresos, egresos y balance\"><line x1=\""+padL+"\" y1=\""+zeroY+"\" x2=\""+(W-padR)+"\" y2=\""+zeroY+"\" stroke=\"#cfcfcf\" stroke-width=\"1\" stroke-dasharray=\"4 3\"></line><line x1=\""+padL+"\" y1=\""+padT+"\" x2=\""+padL+"\" y2=\""+(H-padB)+"\" stroke=\"#ddd\" stroke-width=\"1\"></line><line x1=\""+padL+"\" y1=\""+(H-padB)+"\" x2=\""+(W-padR)+"\" y2=\""+(H-padB)+"\" stroke=\"#ddd\" stroke-width=\"1\"></line><path d=\""+pathBy("ing")+"\" fill=\"none\" stroke=\"#2e7d32\" stroke-width=\"3\"></path><path d=\""+pathBy("egr")+"\" fill=\"none\" stroke=\"#b91c1c\" stroke-width=\"3\"></path><path d=\""+pathBy("balance")+"\" fill=\"none\" stroke=\"#b45309\" stroke-width=\"3\"></path>"+pts("ing","#2e7d32")+pts("egr","#b91c1c")+pts("balance","#b45309")+xLbls+"</svg></div>":"<div class=\"empty\">No hay movimientos para graficar</div>";
-  var det=serie.map(function(r){return "<div style=\"display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:6px 0;border-bottom:.5px solid var(--border)\"><span>"+fmtMes(r.mes)+"</span><span style=\"color:var(--s)\">Ing $"+r.ing.toLocaleString("es-MX")+"</span><span style=\"color:var(--d)\">Egr $"+r.egr.toLocaleString("es-MX")+"</span><span style=\"color:var(--w)\">Bal $"+r.balance.toLocaleString("es-MX")+"</span></div>";}).join("");
-  el.innerHTML="<div class=\"filtros\" style=\"margin-bottom:12px;justify-content:space-between\"><div style=\"display:flex;gap:8px;flex-wrap:wrap\"><select class=\"fi\" id=\"fil-depto-dep\" onchange=\"renderDepto()\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+depOpts+"</select><select class=\"fi\" id=\"fil-depto-pdf-mes\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+mesOpts+"</select></div><button class=\"btn btn-pdf\" onclick=\"pdfFinanzasMesDepto()\">PDF mensual</button></div><div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:var(--text2)\"><span><span style=\"color:#2e7d32\">●</span> Ingresos</span><span><span style=\"color:#b91c1c\">●</span> Egresos</span><span><span style=\"color:#b45309\">●</span> Balance</span></div><div class=\"rg\"><div class=\"rc\"><div class=\"rc-l\">Ingresos</div><div class=\"rc-v\" style=\"color:var(--s);font-size:16px\">$"+resumen.ing.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Egresos</div><div class=\"rc-v\" style=\"color:var(--d);font-size:16px\">$"+resumen.egr.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Balance</div><div class=\"rc-v\" style=\"color:"+(resumen.balance>=0?"var(--w)":"var(--d)")+";font-size:16px\">$"+resumen.balance.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Ale 40%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+ale.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Hector 20%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+hector.toLocaleString("es-MX")+"</div></div></div>"+chart+"<div style=\"margin-top:12px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--rlg);padding:10px\">"+det+"</div>";
+  var chart=buildFinLineChart(serie);
+  var det=serie.map(function(r){return "<div style=\"display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:6px 0;border-bottom:.5px solid var(--border)\"><span>"+fmtMes(r.mes)+"</span><span style=\"color:var(--s)\">Ing $"+r.ing.toLocaleString("es-MX")+"</span><span style=\"color:var(--d)\">Egr $"+r.egr.toLocaleString("es-MX")+"</span><span style=\"color:var(--w)\">Bal $"+r.balance.toLocaleString("es-MX")+"</span><span style=\"color:var(--i)\">Uti $"+r.util.toLocaleString("es-MX")+"</span></div>";}).join("");
+  el.innerHTML="<div class=\"filtros\" style=\"margin-bottom:12px;justify-content:space-between\"><div style=\"display:flex;gap:8px;flex-wrap:wrap\"><select class=\"fi\" id=\"fil-depto-dep\" onchange=\"renderDepto()\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+depOpts+"</select><select class=\"fi\" id=\"fil-depto-year\" onchange=\"renderDepto()\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+yearOpts+"</select><select class=\"fi\" id=\"fil-depto-pdf-mes\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+mesOpts+"</select></div><button class=\"btn btn-pdf\" onclick=\"pdfFinanzasMesDepto()\">PDF mensual</button></div><div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:var(--text2)\"><span><span style=\"color:#2e7d32\">●</span> Ingresos</span><span><span style=\"color:#b91c1c\">●</span> Egresos</span><span><span style=\"color:#b45309\">●</span> Balance</span><span><span style=\"color:#1565c0\">●</span> Utilidad</span></div><div class=\"rg\"><div class=\"rc\"><div class=\"rc-l\">Ingresos</div><div class=\"rc-v\" style=\"color:var(--s);font-size:16px\">$"+resumen.ing.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Egresos</div><div class=\"rc-v\" style=\"color:var(--d);font-size:16px\">$"+resumen.egr.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Balance</div><div class=\"rc-v\" style=\"color:"+(resumen.balance>=0?"var(--w)":"var(--d)")+";font-size:16px\">$"+resumen.balance.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Utilidad</div><div class=\"rc-v\" style=\"color:var(--i);font-size:16px\">$"+resumen.util.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Ale 40%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+ale.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Hector 20%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+hector.toLocaleString("es-MX")+"</div></div></div>"+chart+"<div style=\"margin-top:12px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--rlg);padding:10px\">"+det+"</div>";
   var depSelEl=document.getElementById("fil-depto-dep");
   if(depSelEl)depSelEl.value=depSel;
+  var ySelEl2=document.getElementById("fil-depto-year");
+  if(ySelEl2)ySelEl2.value=String(ySel);
   var pdfSelEl=document.getElementById("fil-depto-pdf-mes");
   if(pdfSelEl)pdfSelEl.value=pdfMesSel;
 }
