@@ -376,8 +376,10 @@ async function genPDFReservacion(id){
 // APARTADOS
 function limpiarAparts(){
   var ahora=Date.now();
+  var prev=aparts.length;
   aparts=aparts.filter(function(a){return ahora<=a.expira;});
   sv("apart_v6",aparts);
+  if(aparts.length!==prev)triggerIcalUpdate();
 }
 function renderAparts(){
   var lista=document.getElementById("lista-apart");
@@ -412,6 +414,7 @@ function guardarApartado(){
   var expira=Date.now()+24*60*60*1000;
   aparts.push({id:"ap_"+Date.now(),nombre:nom,telefono:tel,dep:dep,entrada:ent,salida:sal,notas:notas,expira:expira,creado:new Date().toISOString()});
   sv("apart_v6",aparts);cerrarApartado();
+  triggerIcalUpdate();
   var fakeR={huesped:nom,telefono:tel,dep:dep,entrada:ent,salida:sal,precio:0,personas:"",deposito:0};
   var msg=aplicarTpl(tpls.apartado||"",fakeR);
   window.open("https://wa.me/"+tel.replace(/[\s\-\(\)]/g,"")+"?text="+encodeURIComponent(msg),"_blank");
@@ -420,9 +423,9 @@ function guardarApartado(){
 function liberarApartado(id){
   var a=aparts.find(function(x){return x.id===id;});
   if(a){var fakeR={huesped:a.nombre,telefono:a.telefono,dep:a.dep,entrada:a.entrada,salida:a.salida,precio:0,personas:"",deposito:0};var msg=aplicarTpl(tpls.liberado||"",fakeR);window.open("https://wa.me/"+a.telefono.replace(/[\s\-\(\)]/g,"")+"?text="+encodeURIComponent(msg),"_blank");}
-  aparts=aparts.filter(function(x){return x.id!==id;});sv("apart_v6",aparts);renderTodo();
+  aparts=aparts.filter(function(x){return x.id!==id;});sv("apart_v6",aparts);triggerIcalUpdate();renderTodo();
 }
-function confirmarApartado(id){var a=aparts.find(function(x){return x.id===id;});if(!a)return;aparts=aparts.filter(function(x){return x.id!==id;});sv("apart_v6",aparts);abrirRsvp(null,a);}
+function confirmarApartado(id){var a=aparts.find(function(x){return x.id===id;});if(!a)return;aparts=aparts.filter(function(x){return x.id!==id;});sv("apart_v6",aparts);triggerIcalUpdate();abrirRsvp(null,a);}
 
 // HISTORIAL
 function renderHist(){
