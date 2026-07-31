@@ -114,7 +114,7 @@ function verIngresosMes(){
   renderIng();
 }
 function verPorCobrar(){
-  verReserva(null,"prox","pendiente","todos");
+  verReserva(null,"todos","pendiente","todos");
 }
 function verApartados(){
   goTab("apart");
@@ -478,7 +478,7 @@ function renderRes(){
   var h=new Date(),ms=h.getFullYear()+"-"+String(h.getMonth()+1).padStart(2,"0");
   var iM=rsvps.filter(function(r){return r.entrada.startsWith(ms);}).reduce(function(s,r){return s+r.precio;},0);
   var eM=egrs.filter(function(e){return e.fecha.startsWith(ms);}).reduce(function(s,e){return s+e.monto;},0);
-  var pc=rsvps.filter(function(r){return (r.pago||"pendiente")==="pendiente"&&r.salida>=fechaHoy();}).reduce(function(s,r){return s+r.precio;},0);
+  var pc=rsvps.filter(function(r){return (r.pago||"pendiente")==="pendiente";}).reduce(function(s,r){return s+r.precio;},0);
   var meses=mesesDisp().slice(0,6).reverse();
   var maxV=Math.max.apply(null,meses.map(function(m){return Math.max(rsvps.filter(function(r){return r.entrada.startsWith(m);}).reduce(function(s,r){return s+r.precio;},0),egrs.filter(function(e){return e.fecha.startsWith(m);}).reduce(function(s,e){return s+e.monto;},0),1);}));
   var barras=meses.map(function(m){
@@ -491,13 +491,87 @@ function renderRes(){
   var catR=Object.entries(cats).sort(function(a,b){return b[1]-a[1];}).map(function(e){return "<tr><td>"+e[0]+"</td><td class=\"amt-e\">$"+e[1].toLocaleString("es-MX")+"</td></tr>";}).join("");
   el.innerHTML="<div class=\"rg\"><div class=\"rc\"><div class=\"rc-l\">Ingresos totales</div><div class=\"rc-v\" style=\"color:var(--s)\">$"+tI.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Egresos totales</div><div class=\"rc-v\" style=\"color:var(--d)\">$"+tE.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Utilidad neta</div><div class=\"rc-v\" style=\"color:"+(util>=0?"var(--s)":"var(--d)")+"\">$"+util.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Por cobrar</div><div class=\"rc-v\" style=\"color:var(--w)\">$"+pc.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Este mes (Ing/Egr)</div><div class=\"rc-v\" style=\"font-size:13px\"><span style=\"color:var(--s)\">$"+iM.toLocaleString("es-MX")+"</span> / <span style=\"color:var(--d)\">$"+eM.toLocaleString("es-MX")+"</span></div></div></div><div style=\"font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:500\">Ultimos 6 meses <span style=\"margin-left:8px;font-size:10px\"><span style=\"color:#3B6D11\">■</span> Ing <span style=\"color:#A32D2D;margin-left:4px\">■</span> Egr</span></div><div class=\"bar-chart\">"+barras+"</div>"+(catR?"<div style=\"font-size:11px;color:var(--text2);margin:1rem 0 8px;font-weight:500\">Egresos por categoria</div><table class=\"fin-table\"><thead><tr><th>Categoria</th><th>Total</th></tr></thead><tbody>"+catR+"</tbody></table>":"");
 }
+function getGeneralEgrMes(mes){
+  return egrs.filter(function(e){return (e.dep==="general"||!e.dep)&&e.fecha.startsWith(mes);}).reduce(function(s,e){return s+e.monto;},0);
+}
+function getDeptoMesRows(mesSel){
+  var meses=mesSel&&mesSel!=="todos"?[mesSel]:mesesDisp();
+  var rows=[];
+  meses.forEach(function(mes){
+    deps.forEach(function(dep){
+      var ing=rsvps.filter(function(r){return r.dep===dep.id&&r.entrada.startsWith(mes);}).reduce(function(s,r){return s+r.precio;},0);
+      var egr2=egrs.filter(function(e){return e.dep===dep.id&&e.fecha.startsWith(mes);}).reduce(function(s,e){return s+e.monto;},0);
+      if(!ing&&!egr2)return;
+      rows.push({mes:mes,depNom:dep.nom,depColor:dep.color,ing:ing,egr:egr2,balance:ing-egr2,ale:ing*0.4,hector:ing*0.2,utilPct:ing?((ing-egr2)/ing*100):0});
+    });
+    var generalEgr=getGeneralEgrMes(mes);
+    if(generalEgr){
+      rows.push({mes:mes,depNom:"General",depColor:"#666",ing:0,egr:generalEgr,balance:-generalEgr,ale:0,hector:0,utilPct:0});
+    }
+  });
+  return rows;
+}
+function getDeptoResumen(rows){
+  return rows.reduce(function(acc,row){
+    acc.ing+=row.ing;acc.egr+=row.egr;acc.balance+=row.balance;acc.ale+=row.ale;acc.hector+=row.hector;
+    return acc;
+  },{ing:0,egr:0,balance:0,ale:0,hector:0});
+}
 function renderDepto(){
-  document.getElementById("ft-depto").innerHTML=deps.map(function(dep){
-    var rv=rsvps.filter(function(r){return r.dep===dep.id;}),eg=egrs.filter(function(e){return e.dep===dep.id;});
-    var ing=rv.reduce(function(s,r){return s+r.precio;},0),egr2=eg.reduce(function(s,e){return s+e.monto;},0),util=ing-egr2;
-    var avg=rv.length?Math.round(rv.reduce(function(s,r){return s+noches(r.entrada+"T12:00:00",r.salida+"T12:00:00");},0)/rv.length):0;
-    return "<div style=\"background:var(--bg);border:.5px solid var(--border);border-radius:var(--rlg);padding:14px;margin-bottom:10px\"><div style=\"display:flex;align-items:center;gap:8px;margin-bottom:12px\"><div style=\"width:12px;height:12px;border-radius:50%;background:"+dep.color+"\"></div><div style=\"font-size:15px;font-weight:600\">"+dep.nom+"</div></div><div class=\"rg\"><div class=\"rc\"><div class=\"rc-l\">Ingresos</div><div class=\"rc-v\" style=\"color:var(--s);font-size:16px\">$"+ing.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Egresos</div><div class=\"rc-v\" style=\"color:var(--d);font-size:16px\">$"+egr2.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Utilidad</div><div class=\"rc-v\" style=\"color:"+(util>=0?"var(--s)":"var(--d)")+";font-size:16px\">$"+util.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Reservas / Prom noches</div><div class=\"rc-v\" style=\"font-size:16px\">"+rv.length+" / "+avg+"n</div></div></div></div>";
+  var el=document.getElementById("ft-depto");
+  var meses=mesesDisp();
+  var actual=document.getElementById("fil-depto-mes");
+  var mesSel=actual?actual.value:(meses[0]||"todos");
+  var rows=getDeptoMesRows(mesSel);
+  var resumen=getDeptoResumen(rows);
+  var opciones="<option value=\"todos\">Todos los meses</option>"+meses.map(function(m){return "<option value=\""+m+"\">"+fmtMes(m)+"</option>";}).join("");
+  var filas=rows.map(function(row){
+    var balCls=row.balance>=0?"amt-b":"amt-e";
+    return "<tr><td>"+fmtMes(row.mes)+"</td><td><span style=\"color:"+row.depColor+";font-weight:600\">"+row.depNom+"</span></td><td class=\"amt-i\">$"+row.ing.toLocaleString("es-MX")+"</td><td class=\"amt-e\">$"+row.egr.toLocaleString("es-MX")+"</td><td class=\""+balCls+"\">$"+row.balance.toLocaleString("es-MX")+"</td><td>$"+row.ale.toLocaleString("es-MX")+"</td><td>$"+row.hector.toLocaleString("es-MX")+"</td></tr>";
   }).join("");
+  el.innerHTML="<div class=\"filtros\" style=\"margin-bottom:12px;justify-content:space-between\"><div style=\"display:flex;gap:8px;flex-wrap:wrap\"><select class=\"fi\" id=\"fil-depto-mes\" onchange=\"renderDepto()\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+opciones+"</select></div><button class=\"btn btn-pdf\" onclick=\"pdfFinanzasMesDepto()\">PDF mensual</button></div><div class=\"rg\"><div class=\"rc\"><div class=\"rc-l\">Ingresos</div><div class=\"rc-v\" style=\"color:var(--s);font-size:16px\">$"+resumen.ing.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Egresos</div><div class=\"rc-v\" style=\"color:var(--d);font-size:16px\">$"+resumen.egr.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Balance</div><div class=\"rc-v\" style=\"color:"+(resumen.balance>=0?"var(--w)":"var(--d)")+";font-size:16px\">$"+resumen.balance.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Dividendo Ale 40%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+resumen.ale.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Dividendo Hector 20%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+resumen.hector.toLocaleString("es-MX")+"</div></div></div>"+(rows.length?"<div style=\"overflow-x:auto\"><table class=\"fin-table\"><thead><tr><th>Mes</th><th>Depto</th><th>Ingresos</th><th>Egresos</th><th>Balance</th><th>Ale 40%</th><th>Hector 20%</th></tr></thead><tbody>"+filas+"<tr style=\"font-weight:600;background:var(--bg2)\"><td colspan=\"2\" style=\"text-align:right;padding:8px\">Totales</td><td class=\"amt-i\" style=\"padding:8px\">$"+resumen.ing.toLocaleString("es-MX")+"</td><td class=\"amt-e\" style=\"padding:8px\">$"+resumen.egr.toLocaleString("es-MX")+"</td><td class=\"amt-b\" style=\"padding:8px\">$"+resumen.balance.toLocaleString("es-MX")+"</td><td style=\"padding:8px\">$"+resumen.ale.toLocaleString("es-MX")+"</td><td style=\"padding:8px\">$"+resumen.hector.toLocaleString("es-MX")+"</td></tr></tbody></table></div>":"<div class=\"empty\">No hay movimientos para este periodo</div>");
+  var sel=document.getElementById("fil-depto-mes");
+  if(sel)sel.value=mesSel;
+}
+function pdfFinanzasMesDepto(){
+  var sel=document.getElementById("fil-depto-mes");
+  var mes=sel?sel.value:"todos";
+  if(!mes||mes==="todos"){alert("Selecciona un mes para generar el PDF");return;}
+  var rows=getDeptoMesRows(mes);
+  if(!rows.length){alert("No hay movimientos en ese mes");return;}
+  var resumen=getDeptoResumen(rows);
+  var utilidadPct=resumen.ing?((resumen.balance/resumen.ing)*100):0;
+  var doc=new jsPDF({unit:"mm",format:"a4"}),W=210,H=297;
+  doc.setFillColor(24,95,165);doc.rect(0,0,W,28,"F");
+  doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(16);doc.text("Albatros Departamentos",14,12);
+  doc.setFontSize(10);doc.setFont("helvetica","normal");doc.text("Reporte financiero mensual - "+fmtMes(mes),14,20);
+  doc.setTextColor(30,30,30);doc.setFillColor(245,248,252);doc.rect(0,28,W,H-28,"F");
+  var y=40;
+  function money(v){return "$"+v.toLocaleString("es-MX");}
+  function line(lbl,val,col){doc.setFont("helvetica","bold");doc.setFontSize(10);doc.text(lbl,14,y);doc.setTextColor.apply(doc,col||[30,30,30]);doc.text(val,92,y,{align:"right"});doc.setTextColor(30,30,30);doc.setFont("helvetica","normal");y+=6;}
+  line("Ingresos",money(resumen.ing),[46,125,50]);
+  line("Egresos",money(resumen.egr),[185,28,28]);
+  line("Balance",money(resumen.balance),[180,131,0]);
+  line("Ale 40%",money(resumen.ale));
+  line("Hector 20%",money(resumen.hector));
+  line("Utilidad %",utilidadPct.toFixed(1)+"%");
+  y+=4;
+  doc.setFont("helvetica","bold");doc.text("Detalle por departamento",14,y);y+=8;
+  doc.setFontSize(9);doc.setFont("helvetica","bold");
+  doc.text("Depto",14,y);doc.text("Ingresos",92,y,{align:"right"});doc.text("Egresos",128,y,{align:"right"});doc.text("Balance",164,y,{align:"right"});doc.text("Util %",196,y,{align:"right"});
+  y+=4;doc.line(14,y,196,y);y+=6;doc.setFont("helvetica","normal");
+  rows.forEach(function(row){
+    if(y>270){doc.addPage();y=20;}
+    doc.text(row.depNom,14,y);
+    doc.text(money(row.ing),92,y,{align:"right"});
+    doc.text(money(row.egr),128,y,{align:"right"});
+    doc.text(money(row.balance),164,y,{align:"right"});
+    doc.text((row.utilPct||0).toFixed(1)+"%",196,y,{align:"right"});
+    y+=6;
+  });
+  y+=4;doc.line(14,y,196,y);y+=8;doc.setFont("helvetica","bold");
+  doc.text("Totales",14,y);doc.text(money(resumen.ing),92,y,{align:"right"});doc.text(money(resumen.egr),128,y,{align:"right"});doc.text(money(resumen.balance),164,y,{align:"right"});doc.text(utilidadPct.toFixed(1)+"%",196,y,{align:"right"});
+  doc.save("finanzas-"+mes+".pdf");
 }
 
 // ASEO
@@ -747,7 +821,7 @@ function renderAlertas(){
   var salHoy=rsvps.filter(function(r){return r.salida===hoy;});
   var llegHoy=rsvps.filter(function(r){return r.entrada===hoy;});
   var llegMan=rsvps.filter(function(r){return r.entrada===manS;});
-  var pend=rsvps.filter(function(r){return (r.pago||"pendiente")==="pendiente"&&r.salida>=hoy;});
+  var pend=rsvps.filter(function(r){return (r.pago||"pendiente")==="pendiente";});
   limpiarAparts();
   var apExp=aparts.filter(function(a){var h=(a.expira-Date.now())/3600000;return h<6&&h>0;});
   var msgPend=rsvps.filter(function(r){return msgPendiente(r)&&r.salida>=hoy;});
@@ -762,7 +836,7 @@ function renderAlertas(){
 function renderStats(){
   var h=new Date(),ms=h.getFullYear()+"-"+String(h.getMonth()+1).padStart(2,"0");
   var iM=rsvps.filter(function(r){return r.entrada.startsWith(ms);}).reduce(function(s,r){return s+r.precio;},0);
-  var pend=rsvps.filter(function(r){return (r.pago||"pendiente")==="pendiente"&&r.salida>=fechaHoy();});
+  var pend=rsvps.filter(function(r){return (r.pago||"pendiente")==="pendiente";});
   var prox=rsvps.filter(function(r){return r.salida>=fechaHoy();}).length;
   document.getElementById("stats").innerHTML="<div class=\"sc sc-click\" onclick=\"verDeptos()\"><div class=\"sc-l\">Deptos</div><div class=\"sc-v\">"+deps.length+"</div><div class=\"sc-s\">activos</div></div><div class=\"sc sc-click\" onclick=\"verProximasLlegadas()\"><div class=\"sc-l\">Proximas llegadas</div><div class=\"sc-v\">"+prox+"</div><div class=\"sc-s\">reservadas</div></div><div class=\"sc sc-click\" onclick=\"verIngresosMes()\"><div class=\"sc-l\">Ingresos este mes</div><div class=\"sc-v\" style=\"color:var(--s)\">$"+iM.toLocaleString("es-MX")+"</div><div class=\"sc-s\">MXN</div></div><div class=\"sc sc-click\" onclick=\"verPorCobrar()\"><div class=\"sc-l\">Por cobrar</div><div class=\"sc-v\" style=\""+(pend.length?"color:var(--w)":"")+"\">$"+pend.reduce(function(s,r){return s+r.precio;},0).toLocaleString("es-MX")+"</div><div class=\"sc-s\">"+pend.length+" pendiente"+(pend.length!==1?"s":"")+"</div></div><div class=\"sc sc-click\" onclick=\"verApartados()\"><div class=\"sc-l\">Apartados activos</div><div class=\"sc-v\" style=\"color:#7c3aed\">"+aparts.length+"</div><div class=\"sc-s\">en espera</div></div>";
 }
