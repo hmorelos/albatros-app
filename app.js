@@ -520,24 +520,55 @@ function getDeptoResumen(rows){
     return acc;
   },{ing:0,egr:0,balance:0,ale:0,hector:0});
 }
+function getDeptoSeries(depSel){
+  var meses=mesesDisp().slice().reverse();
+  return meses.map(function(mes){
+    var ing=0,egr2=0;
+    if(depSel==="todos"){
+      ing=rsvps.filter(function(r){return r.entrada.startsWith(mes);}).reduce(function(s,r){return s+r.precio;},0);
+      egr2=egrs.filter(function(e){return e.fecha.startsWith(mes);}).reduce(function(s,e){return s+e.monto;},0);
+    } else {
+      ing=rsvps.filter(function(r){return r.dep===depSel&&r.entrada.startsWith(mes);}).reduce(function(s,r){return s+r.precio;},0);
+      egr2=egrs.filter(function(e){return e.dep===depSel&&e.fecha.startsWith(mes);}).reduce(function(s,e){return s+e.monto;},0);
+    }
+    return {mes:mes,ing:ing,egr:egr2,balance:ing-egr2};
+  });
+}
 function renderDepto(){
   var el=document.getElementById("ft-depto");
   var meses=mesesDisp();
-  var actual=document.getElementById("fil-depto-mes");
-  var mesSel=actual?actual.value:(meses[0]||"todos");
-  var rows=getDeptoMesRows(mesSel);
-  var resumen=getDeptoResumen(rows);
-  var opciones="<option value=\"todos\">Todos los meses</option>"+meses.map(function(m){return "<option value=\""+m+"\">"+fmtMes(m)+"</option>";}).join("");
-  var filas=rows.map(function(row){
-    var balCls=row.balance>=0?"amt-b":"amt-e";
-    return "<tr><td>"+fmtMes(row.mes)+"</td><td><span style=\"color:"+row.depColor+";font-weight:600\">"+row.depNom+"</span></td><td class=\"amt-i\">$"+row.ing.toLocaleString("es-MX")+"</td><td class=\"amt-e\">$"+row.egr.toLocaleString("es-MX")+"</td><td class=\""+balCls+"\">$"+row.balance.toLocaleString("es-MX")+"</td><td>$"+row.ale.toLocaleString("es-MX")+"</td><td>$"+row.hector.toLocaleString("es-MX")+"</td></tr>";
-  }).join("");
-  el.innerHTML="<div class=\"filtros\" style=\"margin-bottom:12px;justify-content:space-between\"><div style=\"display:flex;gap:8px;flex-wrap:wrap\"><select class=\"fi\" id=\"fil-depto-mes\" onchange=\"renderDepto()\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+opciones+"</select></div><button class=\"btn btn-pdf\" onclick=\"pdfFinanzasMesDepto()\">PDF mensual</button></div><div class=\"rg\"><div class=\"rc\"><div class=\"rc-l\">Ingresos</div><div class=\"rc-v\" style=\"color:var(--s);font-size:16px\">$"+resumen.ing.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Egresos</div><div class=\"rc-v\" style=\"color:var(--d);font-size:16px\">$"+resumen.egr.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Balance</div><div class=\"rc-v\" style=\"color:"+(resumen.balance>=0?"var(--w)":"var(--d)")+";font-size:16px\">$"+resumen.balance.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Dividendo Ale 40%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+resumen.ale.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Dividendo Hector 20%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+resumen.hector.toLocaleString("es-MX")+"</div></div></div>"+(rows.length?"<div style=\"overflow-x:auto\"><table class=\"fin-table\"><thead><tr><th>Mes</th><th>Depto</th><th>Ingresos</th><th>Egresos</th><th>Balance</th><th>Ale 40%</th><th>Hector 20%</th></tr></thead><tbody>"+filas+"<tr style=\"font-weight:600;background:var(--bg2)\"><td colspan=\"2\" style=\"text-align:right;padding:8px\">Totales</td><td class=\"amt-i\" style=\"padding:8px\">$"+resumen.ing.toLocaleString("es-MX")+"</td><td class=\"amt-e\" style=\"padding:8px\">$"+resumen.egr.toLocaleString("es-MX")+"</td><td class=\"amt-b\" style=\"padding:8px\">$"+resumen.balance.toLocaleString("es-MX")+"</td><td style=\"padding:8px\">$"+resumen.ale.toLocaleString("es-MX")+"</td><td style=\"padding:8px\">$"+resumen.hector.toLocaleString("es-MX")+"</td></tr></tbody></table></div>":"<div class=\"empty\">No hay movimientos para este periodo</div>");
-  var sel=document.getElementById("fil-depto-mes");
-  if(sel)sel.value=mesSel;
+  var depSelIn=document.getElementById("fil-depto-dep");
+  var depSel=depSelIn?depSelIn.value:"todos";
+  var pdfSelIn=document.getElementById("fil-depto-pdf-mes");
+  var pdfMesSel=pdfSelIn?pdfSelIn.value:(meses[0]||"todos");
+  var depOpts="<option value=\"todos\">Todos los deptos</option>"+deps.map(function(d){return "<option value=\""+d.id+"\">"+d.nom+"</option>";}).join("");
+  var mesOpts="<option value=\"todos\">Todos los meses</option>"+meses.map(function(m){return "<option value=\""+m+"\">"+fmtMes(m)+"</option>";}).join("");
+  var serie=getDeptoSeries(depSel);
+  var resumen=serie.reduce(function(acc,r){acc.ing+=r.ing;acc.egr+=r.egr;acc.balance+=r.balance;return acc;},{ing:0,egr:0,balance:0});
+  var ale=resumen.ing*0.4,hector=resumen.ing*0.2;
+  var vals=[];
+  serie.forEach(function(r){vals.push(r.ing,r.egr,r.balance);});
+  var minV=Math.min.apply(null,vals.concat([0])),maxV=Math.max.apply(null,vals.concat([1]));
+  var W=820,H=280,padL=56,padR=18,padT=16,padB=40;
+  var plotW=W-padL-padR,plotH=H-padT-padB;
+  function xAt(i){return serie.length===1?padL+plotW/2:padL+(i/(serie.length-1))*plotW;}
+  function yAt(v){if(maxV===minV)return padT+plotH/2;return padT+((maxV-v)/(maxV-minV))*plotH;}
+  function pathBy(k){
+    return serie.map(function(r,i){return (i?"L":"M")+xAt(i).toFixed(1)+" "+yAt(r[k]).toFixed(1);}).join(" ");
+  }
+  var zeroY=yAt(0).toFixed(1);
+  var pts=function(k,c){return serie.map(function(r,i){return "<circle cx=\""+xAt(i).toFixed(1)+"\" cy=\""+yAt(r[k]).toFixed(1)+"\" r=\"3\" fill=\""+c+"\"></circle>";}).join("");};
+  var xLbls=serie.map(function(r,i){return "<text x=\""+xAt(i).toFixed(1)+"\" y=\""+(H-14)+"\" text-anchor=\"middle\" font-size=\"10\" fill=\"#777\">"+MESES[parseInt(r.mes.slice(5,7),10)-1].slice(0,3)+"</text>";}).join("");
+  var chart=serie.length?"<div style=\"background:var(--bg);border:.5px solid var(--border);border-radius:var(--rlg);padding:10px;overflow-x:auto\"><svg viewBox=\"0 0 "+W+" "+H+"\" width=\"100%\" height=\"280\" role=\"img\" aria-label=\"Grafica lineal de ingresos, egresos y balance\"><line x1=\""+padL+"\" y1=\""+zeroY+"\" x2=\""+(W-padR)+"\" y2=\""+zeroY+"\" stroke=\"#cfcfcf\" stroke-width=\"1\" stroke-dasharray=\"4 3\"></line><line x1=\""+padL+"\" y1=\""+padT+"\" x2=\""+padL+"\" y2=\""+(H-padB)+"\" stroke=\"#ddd\" stroke-width=\"1\"></line><line x1=\""+padL+"\" y1=\""+(H-padB)+"\" x2=\""+(W-padR)+"\" y2=\""+(H-padB)+"\" stroke=\"#ddd\" stroke-width=\"1\"></line><path d=\""+pathBy("ing")+"\" fill=\"none\" stroke=\"#2e7d32\" stroke-width=\"3\"></path><path d=\""+pathBy("egr")+"\" fill=\"none\" stroke=\"#b91c1c\" stroke-width=\"3\"></path><path d=\""+pathBy("balance")+"\" fill=\"none\" stroke=\"#b45309\" stroke-width=\"3\"></path>"+pts("ing","#2e7d32")+pts("egr","#b91c1c")+pts("balance","#b45309")+xLbls+"</svg></div>":"<div class=\"empty\">No hay movimientos para graficar</div>";
+  var det=serie.map(function(r){return "<div style=\"display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:6px 0;border-bottom:.5px solid var(--border)\"><span>"+fmtMes(r.mes)+"</span><span style=\"color:var(--s)\">Ing $"+r.ing.toLocaleString("es-MX")+"</span><span style=\"color:var(--d)\">Egr $"+r.egr.toLocaleString("es-MX")+"</span><span style=\"color:var(--w)\">Bal $"+r.balance.toLocaleString("es-MX")+"</span></div>";}).join("");
+  el.innerHTML="<div class=\"filtros\" style=\"margin-bottom:12px;justify-content:space-between\"><div style=\"display:flex;gap:8px;flex-wrap:wrap\"><select class=\"fi\" id=\"fil-depto-dep\" onchange=\"renderDepto()\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+depOpts+"</select><select class=\"fi\" id=\"fil-depto-pdf-mes\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+mesOpts+"</select></div><button class=\"btn btn-pdf\" onclick=\"pdfFinanzasMesDepto()\">PDF mensual</button></div><div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:var(--text2)\"><span><span style=\"color:#2e7d32\">●</span> Ingresos</span><span><span style=\"color:#b91c1c\">●</span> Egresos</span><span><span style=\"color:#b45309\">●</span> Balance</span></div><div class=\"rg\"><div class=\"rc\"><div class=\"rc-l\">Ingresos</div><div class=\"rc-v\" style=\"color:var(--s);font-size:16px\">$"+resumen.ing.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Egresos</div><div class=\"rc-v\" style=\"color:var(--d);font-size:16px\">$"+resumen.egr.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Balance</div><div class=\"rc-v\" style=\"color:"+(resumen.balance>=0?"var(--w)":"var(--d)")+";font-size:16px\">$"+resumen.balance.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Ale 40%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+ale.toLocaleString("es-MX")+"</div></div><div class=\"rc\"><div class=\"rc-l\">Hector 20%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+hector.toLocaleString("es-MX")+"</div></div></div>"+chart+"<div style=\"margin-top:12px;background:var(--bg);border:.5px solid var(--border);border-radius:var(--rlg);padding:10px\">"+det+"</div>";
+  var depSelEl=document.getElementById("fil-depto-dep");
+  if(depSelEl)depSelEl.value=depSel;
+  var pdfSelEl=document.getElementById("fil-depto-pdf-mes");
+  if(pdfSelEl)pdfSelEl.value=pdfMesSel;
 }
 function pdfFinanzasMesDepto(){
-  var sel=document.getElementById("fil-depto-mes");
+  var sel=document.getElementById("fil-depto-pdf-mes");
   var mes=sel?sel.value:"todos";
   if(!mes||mes==="todos"){alert("Selecciona un mes para generar el PDF");return;}
   var rows=getDeptoMesRows(mes);
