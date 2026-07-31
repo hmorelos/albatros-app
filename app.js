@@ -260,7 +260,7 @@ function renderRsvp(){
   lista.innerHTML=f.map(function(r){
     var dep=depById(r.dep),n=noches(r.entrada+"T12:00:00",r.salida+"T12:00:00");
     var ef=fmtD(r.entrada),sf=fmtD(r.salida),pasada=r.salida<hoy,ps=r.pago||"pendiente";
-    var pb={pendiente:"<span class=\"badge b-pend\">Pendiente</span>",parcial:"<span class=\"badge b-parc\">Anticipo $"+(r.anticipo||0).toLocaleString("es-MX")+" / Resto $"+(r.precio-(r.anticipo||0)).toLocaleString("es-MX")+"</span>",liquidada:"<span class=\"badge b-liq\">Liquidada</span>"}[ps]||"";
+    var pb={pendiente:"<span class=\"badge b-pend\">Pendiente</span>",parcial:"<span class=\"badge b-parc\">Pendiente por liquidar · Anticipo $"+(r.anticipo||0).toLocaleString("es-MX")+" / Resto $"+(r.precio-(r.anticipo||0)).toLocaleString("es-MX")+"</span>",liquidada:"<span class=\"badge b-liq\">Liquidada</span>"}[ps]||"";
     var pa=ps!=="liquidada"?"<div class=\"wa-row\">"+(ps==="pendiente"?"<button class=\"btn btn-g\" style=\"font-size:11px;padding:3px 8px\" onclick=\"cambiarPago('"+r.id+"','parcial')\">Anticipo</button>":"")+"<button class=\"btn btn-ok\" onclick=\"cambiarPago('"+r.id+"','liquidada')\">Liquidada</button></div>":"";
     var m=r.mensajes||{};
     var allSent=m.huesped&&m.llaves&&m.admin,noneSent=!m.huesped&&!m.llaves&&!m.admin;
@@ -696,7 +696,7 @@ function renderIng(){
   var total=f.reduce(function(s,r){return s+r.precio;},0);
   var t=document.getElementById("tabla-ing");
   if(!f.length){t.innerHTML="<tr><td colspan=\"7\" style=\"text-align:center;padding:2rem;color:var(--text3)\">Sin ingresos</td></tr>";return;}
-  t.innerHTML="<thead><tr><th>Fecha</th><th>Huesped</th><th>Depto</th><th>Noches</th><th>Origen</th><th>Pago</th><th>Monto</th></tr></thead><tbody>"+f.map(function(r){var d=depById(r.dep),n=noches(r.entrada+"T12:00:00",r.salida+"T12:00:00"),ps={pendiente:"Pend",parcial:"Anticipo",liquidada:"OK"}[r.pago||"pendiente"];return "<tr><td>"+fmtD(r.entrada)+"</td><td>"+r.huesped+"</td><td>"+(d?"<span style=\"color:"+d.color+"\">"+d.nom+"</span>":r.dep)+"</td><td>"+n+"</td><td>"+(r.origen||"-")+"</td><td>"+ps+"</td><td class=\"amt-i\">$"+r.precio.toLocaleString("es-MX")+"</td></tr>";}).join("")+"<tr style=\"font-weight:600;background:var(--bg2)\"><td colspan=\"6\" style=\"text-align:right;padding:8px\">Total</td><td class=\"amt-i\" style=\"padding:8px\">$"+total.toLocaleString("es-MX")+"</td></tr></tbody>";
+  t.innerHTML="<thead><tr><th>Fecha</th><th>Huesped</th><th>Depto</th><th>Noches</th><th>Origen</th><th>Pago</th><th>Monto</th></tr></thead><tbody>"+f.map(function(r){var d=depById(r.dep),n=noches(r.entrada+"T12:00:00",r.salida+"T12:00:00"),ps={pendiente:"Pend",parcial:"Pend (anticipo)",liquidada:"OK"}[r.pago||"pendiente"];return "<tr><td>"+fmtD(r.entrada)+"</td><td>"+r.huesped+"</td><td>"+(d?"<span style=\"color:"+d.color+"\">"+d.nom+"</span>":r.dep)+"</td><td>"+n+"</td><td>"+(r.origen||"-")+"</td><td>"+ps+"</td><td class=\"amt-i\">$"+r.precio.toLocaleString("es-MX")+"</td></tr>";}).join("")+"<tr style=\"font-weight:600;background:var(--bg2)\"><td colspan=\"6\" style=\"text-align:right;padding:8px\">Total</td><td class=\"amt-i\" style=\"padding:8px\">$"+total.toLocaleString("es-MX")+"</td></tr></tbody>";
 }
 function renderEgr(){
   var mes=document.getElementById("fil-egr-mes").value;
