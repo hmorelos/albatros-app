@@ -12,6 +12,11 @@ function fechaHoy(){var d=new Date();return d.getFullYear()+"-"+String(d.getMont
 function fmtD(s){return new Date(s+"T12:00:00").toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});}
 function fmtDL(s){return new Date(s+"T12:00:00").toLocaleDateString("es-MX",{weekday:"long",year:"numeric",month:"long",day:"numeric"});}
 function noches(e,s){return Math.round((new Date(s)-new Date(e))/86400000);}
+function parseMonto(v){
+  var t=(v===undefined||v===null)?"":String(v).trim();
+  if(!t)return 0;
+  return parseFloat(t)||0;
+}
 function saldoPendienteRsvp(r){return Math.max(0,(parseFloat(r.precio)||0)-(parseFloat(r.deposito)||0));}
 function totalPorCobrar(list){return list.reduce(function(s,r){return s+saldoPendienteRsvp(r);},0);}
 
@@ -963,8 +968,9 @@ function guardarRsvp(){
   if(!sal||sal<=ent){document.getElementById("fg-sal").classList.add("fe");ok=false;}
   if(!ok)return;
   var precioFinal=getPrecioTotal();
+  var depositoNum=parseMonto(deposito);
   var msj=editRsvp?(rsvps.find(function(x){return x.id===editRsvp;})||{mensajes:{}}).mensajes||{}:{};
-  var obj={huesped:huesped,telefono:tel,correo:correo,dep:dep,personas:parseInt(per),entrada:ent,salida:sal,precio:precioFinal,deposito:parseFloat(deposito)||0,numAirbnb:airbnb,origen:origen,colorReserva:colorR,pago:pago,anticipo:pago==="parcial"?parseFloat(anticipo)||0:0,notas:notas,mensajes:msj};
+  var obj={huesped:huesped,telefono:tel,correo:correo,dep:dep,personas:parseInt(per),entrada:ent,salida:sal,precio:precioFinal,deposito:depositoNum,numAirbnb:airbnb,origen:origen,colorReserva:colorR,pago:pago,anticipo:pago==="parcial"?parseMonto(anticipo):0,notas:notas,mensajes:msj};
   if(editRsvp){var i=rsvps.findIndex(function(x){return x.id===editRsvp;});if(i>=0)rsvps[i]=Object.assign({},rsvps[i],obj);}
   else rsvps.push(Object.assign({id:Date.now().toString(),creado:new Date().toISOString()},obj));
   sv("rsvp_v6",rsvps);cerrarRsvp();renderTodo();triggerIcalUpdate();
