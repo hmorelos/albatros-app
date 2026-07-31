@@ -39,6 +39,7 @@ function aplicarTpl(tpl,r){
     .replace(/\{deposito\}/g,(r.deposito||0).toLocaleString("es-MX"));
 }
 
+
 // TABS
 function setTab(tab,el){
   tabAct=tab;
@@ -519,14 +520,14 @@ function buildFinLineChart(serie){
   var minV=Math.min.apply(null,vals.concat([0])),maxV=Math.max.apply(null,vals.concat([1]));
   var W=900,H=360,padL=62,padR=18,padT=18,padB=28;
   var plotW=W-padL-padR,plotH=H-padT-padB;
-  function xAt(v){if(maxV===minV)return padL+plotW/2;return padL+((v-minV)/(maxV-minV))*plotW;}
+  function xAt(v){if(maxV===minV)return padL+plotW/2;return padL+((maxV-v)/(maxV-minV))*plotW;}
   function yAt(i){return serie.length===1?padT+plotH/2:padT+(i/(serie.length-1))*plotH;}
   function pathBy(k){return serie.map(function(r,i){return (i?"L":"M")+xAt(r[k]).toFixed(1)+" "+yAt(i).toFixed(1);}).join(" ");}
   var zeroX=xAt(0).toFixed(1);
   var pts=function(k,c){return serie.map(function(r,i){return "<circle cx=\""+xAt(r[k]).toFixed(1)+"\" cy=\""+yAt(i).toFixed(1)+"\" r=\"3\" fill=\""+c+"\"></circle>";}).join("");};
   var yLbls=serie.map(function(r,i){return "<text x=\""+(padL-8)+"\" y=\""+(yAt(i)+3).toFixed(1)+"\" text-anchor=\"end\" font-size=\"10\" fill=\"#777\">"+r.label+"</text>";}).join("");
-  var xMinLbl="<text x=\""+padL+"\" y=\""+(H-8)+"\" text-anchor=\"start\" font-size=\"10\" fill=\"#777\">$"+Math.round(minV).toLocaleString("es-MX")+"</text>";
-  var xMaxLbl="<text x=\""+(W-padR)+"\" y=\""+(H-8)+"\" text-anchor=\"end\" font-size=\"10\" fill=\"#777\">$"+Math.round(maxV).toLocaleString("es-MX")+"</text>";
+  var xMinLbl="<text x=\""+(W-padR)+"\" y=\""+(H-8)+"\" text-anchor=\"end\" font-size=\"10\" fill=\"#777\">$"+Math.round(minV).toLocaleString("es-MX")+"</text>";
+  var xMaxLbl="<text x=\""+padL+"\" y=\""+(H-8)+"\" text-anchor=\"start\" font-size=\"10\" fill=\"#777\">$"+Math.round(maxV).toLocaleString("es-MX")+"</text>";
   return "<div style=\"background:var(--bg);border:.5px solid var(--border);border-radius:var(--rlg);padding:10px;overflow-x:auto\"><svg viewBox=\"0 0 "+W+" "+H+"\" width=\"100%\" height=\"360\" role=\"img\" aria-label=\"Grafica lineal de finanzas con ejes invertidos\"><line x1=\""+zeroX+"\" y1=\""+padT+"\" x2=\""+zeroX+"\" y2=\""+(H-padB)+"\" stroke=\"#cfcfcf\" stroke-width=\"1\" stroke-dasharray=\"4 3\"></line><line x1=\""+padL+"\" y1=\""+padT+"\" x2=\""+padL+"\" y2=\""+(H-padB)+"\" stroke=\"#ddd\" stroke-width=\"1\"></line><line x1=\""+padL+"\" y1=\""+(H-padB)+"\" x2=\""+(W-padR)+"\" y2=\""+(H-padB)+"\" stroke=\"#ddd\" stroke-width=\"1\"></line><path d=\""+pathBy("ing")+"\" fill=\"none\" stroke=\"#2e7d32\" stroke-width=\"3\"></path><path d=\""+pathBy("egr")+"\" fill=\"none\" stroke=\"#b91c1c\" stroke-width=\"3\"></path><path d=\""+pathBy("balance")+"\" fill=\"none\" stroke=\"#b45309\" stroke-width=\"3\"></path><path d=\""+pathBy("util")+"\" fill=\"none\" stroke=\"#1565c0\" stroke-width=\"3\"></path>"+pts("ing","#2e7d32")+pts("egr","#b91c1c")+pts("balance","#b45309")+pts("util","#1565c0")+yLbls+xMinLbl+xMaxLbl+"</svg></div>";
 }
 function renderRes(){
@@ -998,6 +999,83 @@ document.getElementById("lp").addEventListener("keydown",function(e){if(e.key===
 document.getElementById("lu").addEventListener("keydown",function(e){if(e.key==="Enter")document.getElementById("lp").focus();});
 document.getElementById("f-ent").addEventListener("change",calcPrecio);
 document.getElementById("f-sal").addEventListener("change",calcPrecio);
+
+// Override limpio de la vista Por dpto.
+function renderDepto(){
+  var el=document.getElementById("ft-depto");
+  var meses=mesesDisp();
+  var ys=yearsDisp();
+  var depSelIn=document.getElementById("fil-depto-dep");
+  var depSel=depSelIn?depSelIn.value:"todos";
+  var ySelIn=document.getElementById("fil-depto-year");
+  var ySel=ySelIn?parseInt(ySelIn.value,10):ys[0];
+  if(!ys.includes(ySel))ySel=ys[0];
+  var pdfSelIn=document.getElementById("fil-depto-pdf-mes");
+  var pdfMesSel=pdfSelIn?pdfSelIn.value:(meses[0]||"todos");
+
+  var depOpts="<option value=\"todos\">Todos los deptos</option>"+deps.map(function(d){return "<option value=\""+d.id+"\">"+d.nom+"</option>";}).join("");
+  var mesOpts="<option value=\"todos\">Todos los meses</option>"+meses.map(function(m){return "<option value=\""+m+"\">"+fmtMes(m)+"</option>";}).join("");
+  var yearOpts=ys.map(function(y){return "<option value=\""+y+"\">"+y+"</option>";}).join("");
+
+  // Orden natural del arreglo: enero -> diciembre.
+  var serie=buildYearSeries(ySel,depSel);
+  var resumen=serie.reduce(function(acc,r){
+    acc.ing+=r.ing;
+    acc.egr+=r.egr;
+    acc.balance=r.balance;
+    acc.util+=r.util;
+    return acc;
+  },{ing:0,egr:0,balance:0,util:0});
+
+  var ale=resumen.ing*0.4;
+  var hector=resumen.ing*0.2;
+  var bancoInicial=69000;
+  var banco=bancoInicial-resumen.egr;
+  var chart=buildFinLineChart(serie);
+
+  var det=serie.map(function(r){
+    var aleMes=r.ing*0.4;
+    var hectorMes=r.ing*0.2;
+    var alePct=r.ing?40:0;
+    var hectorPct=r.ing?20:0;
+    return "<div style=\"display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:6px 0;border-bottom:.5px solid var(--border)\">"
+      +"<span>"+fmtMes(r.mes)+"</span>"
+      +"<span style=\"color:var(--s)\">Ing $"+r.ing.toLocaleString("es-MX")+"</span>"
+      +"<span style=\"color:var(--d)\">Egr $"+r.egr.toLocaleString("es-MX")+"</span>"
+      +"<span style=\"color:var(--w)\">Bal $"+r.balance.toLocaleString("es-MX")+"</span>"
+      +"<span style=\"color:var(--i)\">Uti $"+r.util.toLocaleString("es-MX")+"</span>"
+      +"<span style=\"color:var(--text2)\">Ale " + alePct.toFixed(0) + "% ($"+aleMes.toLocaleString("es-MX")+")</span>"
+      +"<span style=\"color:var(--text2)\">Hector " + hectorPct.toFixed(0) + "% ($"+hectorMes.toLocaleString("es-MX")+")</span>"
+      +"</div>";
+  }).join("");
+
+  var cards="<div class=\"rg\">"
+    +"<div class=\"rc\"><div class=\"rc-l\">Ingresos</div><div class=\"rc-v\" style=\"color:var(--s);font-size:16px\">$"+resumen.ing.toLocaleString("es-MX")+"</div></div>"
+    +"<div class=\"rc\"><div class=\"rc-l\">Egresos</div><div class=\"rc-v\" style=\"color:var(--d);font-size:16px\">$"+resumen.egr.toLocaleString("es-MX")+"</div></div>"
+    +"<div class=\"rc\"><div class=\"rc-l\">Balance</div><div class=\"rc-v\" style=\"color:"+(resumen.balance>=0?"var(--w)":"var(--d)")+";font-size:16px\">$"+resumen.balance.toLocaleString("es-MX")+"</div></div>"
+    +"<div class=\"rc\"><div class=\"rc-l\">Utilidad</div><div class=\"rc-v\" style=\"color:var(--i);font-size:16px\">$"+resumen.util.toLocaleString("es-MX")+"</div></div>"
+    +"<div class=\"rc\"><div class=\"rc-l\">Ale 40%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+ale.toLocaleString("es-MX")+"</div></div>"
+    +"<div class=\"rc\"><div class=\"rc-l\">Hector 20%</div><div class=\"rc-v\" style=\"font-size:16px\">$"+hector.toLocaleString("es-MX")+"</div></div>"
+    +"<div class=\"rc\"><div class=\"rc-l\">Banco</div><div class=\"rc-v\" style=\"color:"+(banco>=0?"var(--i)":"var(--d)")+";font-size:16px\">$"+banco.toLocaleString("es-MX")+"</div><div class=\"rc-s\">Inicio $"+bancoInicial.toLocaleString("es-MX")+" - gastos</div></div>"
+    +"</div>";
+
+  el.innerHTML=
+    "<div class=\"filtros\" style=\"margin-bottom:12px;justify-content:space-between\"><div style=\"display:flex;gap:8px;flex-wrap:wrap\"><select class=\"fi\" id=\"fil-depto-dep\" onchange=\"renderDepto()\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+depOpts+"</select><select class=\"fi\" id=\"fil-depto-year\" onchange=\"renderDepto()\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+yearOpts+"</select><select class=\"fi\" id=\"fil-depto-pdf-mes\" style=\"width:auto;padding:5px 8px;font-size:12px\">"+mesOpts+"</select></div><div style=\"display:flex;gap:8px;flex-wrap:wrap\"><button class=\"btn btn-pdf\" onclick=\"pdfFinanzasMesDepto()\">PDF mensual</button><button class=\"btn btn-wa\" onclick=\"enviarPdfFinanzasWA()\">Enviar WA</button></div></div>"
+    +"<div style=\"display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:var(--text2)\"><span><span style=\"color:#2e7d32\">●</span> Ingresos</span><span><span style=\"color:#b91c1c\">●</span> Egresos</span><span><span style=\"color:#b45309\">●</span> Balance</span><span><span style=\"color:#1565c0\">●</span> Utilidad</span></div>"
+    +cards
+    +chart
+    +"<div style=\"background:var(--bg);border:.5px solid var(--border);border-radius:var(--rlg);padding:10px;margin-top:10px\">"
+    +"<div style=\"font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text2)\">Detalle mensual</div>"
+    +det
+    +"</div>";
+
+  var depSelEl=document.getElementById("fil-depto-dep");
+  if(depSelEl)depSelEl.value=depSel;
+  var ySelEl2=document.getElementById("fil-depto-year");
+  if(ySelEl2)ySelEl2.value=String(ySel);
+  var pdfSelEl=document.getElementById("fil-depto-pdf-mes");
+  if(pdfSelEl)pdfSelEl.value=pdfMesSel;
+}
 
 async function iniciarApp(){
   document.getElementById("fecha-hoy").textContent=new Date().toLocaleDateString("es-MX",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
