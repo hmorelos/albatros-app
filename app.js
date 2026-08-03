@@ -985,7 +985,8 @@ function pConfirm(t,txt,cb){confirmCb=cb;document.getElementById("co-tit").textC
 function cerrarConfirm(){document.getElementById("co").classList.remove("open");confirmCb=null;}
 function ejecutarConfirm(){if(confirmCb)confirmCb();cerrarConfirm();}
 function renderTodo(){renderStats();renderAlertas();renderCal();if(tabAct==="rsvp"){updFilDep();renderRsvp();}if(tabAct==="apart"){limpiarAparts();renderAparts();}if(tabAct==="hist")renderHist();if(tabAct==="fin")renderFin();if(tabAct==="dep")renderDeps();}
-async function syncManual(){await cargarSheets();renderTodo();}
+async function syncManual(){await retryPendingSync();await cargarSheets();renderTodo();}
+async function refreshSharedData(){await retryPendingSync();await cargarSheets();renderTodo();}
 
 // LOGIN
 function doLogin(){
@@ -1084,7 +1085,9 @@ async function iniciarApp(){
   limpiarAparts();
   autoSyncIcals();
   renderTodo();
-  setInterval(function(){limpiarAparts();renderAlertas();if(tabAct==="apart")renderAparts();},60000);
+  setInterval(async function(){await refreshSharedData();},60000);
+  window.addEventListener("focus",function(){refreshSharedData();});
+  document.addEventListener("visibilitychange",function(){if(!document.hidden)refreshSharedData();});
 }
 
 if(sessionStorage.getItem("alb")){

@@ -13,30 +13,72 @@ const ICAL_UPDT="https://script.google.com/macros/s/AKfycbzedB-wel8IpQ5bF-ebFiNW
 const REGL_DEF="https://docs.google.com/document/d/1nDyiRlUJ-Qn-MQCehdVszYFPwVovZ3W1WineLMSrG78/edit?usp=sharing";
 const UBI_DEF="https://goo.gl/maps/aUSMKCMqsLnVWdFi9";
 const ETQS=["{nombre}","{telefono}","{fecha_entrada}","{fecha_salida}","{dpto}","{depto_nombre}","{personas}","{ubicacion}","{reglamento}","{wifi}","{wifi_pass}","{monto}","{deposito}"];
+const SYNC_TAB_MAP={deps_v6:"departamentos",rsvp_v6:"reservas",egr_v6:"egresos",apart_v6:"apartados",usr_v6:"usuarios",tpl_v6:"templates",cfg_v6:"config"};
+const PENDING_SYNC_KEY="alb_pending_sync_v1";
 
 function ld(k,d){try{return JSON.parse(localStorage.getItem(k)||"null")||d;}catch(e){return d;}}
+function getPendingSync(){try{return JSON.parse(localStorage.getItem(PENDING_SYNC_KEY)||"{}")||{};}catch(e){return {};}}
+function hasPendingSync(k){return Object.prototype.hasOwnProperty.call(getPendingSync(),k);}
+function setPendingSync(k,v){var pending=getPendingSync();pending[k]=v;try{localStorage.setItem(PENDING_SYNC_KEY,JSON.stringify(pending));}catch(e){}}
+function clearPendingSync(k){var pending=getPendingSync();if(!Object.prototype.hasOwnProperty.call(pending,k))return;delete pending[k];try{localStorage.setItem(PENDING_SYNC_KEY,JSON.stringify(pending));}catch(e){}}
+function setSyncBar(msg,bg,color,hideMs){
+  var bar=document.getElementById("sync-bar");
+  if(!bar)return;
+  bar.textContent=msg;
+  bar.style.display="block";
+  bar.style.background=bg||"var(--ig)";
+  bar.style.color=color||"var(--i)";
+  if(setSyncBar._t)clearTimeout(setSyncBar._t);
+  if(hideMs){
+    setSyncBar._t=setTimeout(function(){bar.style.display="none";},hideMs);
+  }
+}
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}syncTab(k,v);}
+async function sendSyncRequest(tab,data){
+  var payload="action=set&tab="+encodeURIComponent(tab)+"&data="+encodeURIComponent(JSON.stringify(data));
+  try{
+    var postRes=await fetch(DB_URL,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:payload});
+    if(postRes.ok)return postRes;
+  }catch(e){}
+  return fetch(DB_URL+"?action=set&tab="+tab+"&data="+encodeURIComponent(JSON.stringify(data)));
+}
 async function syncTab(k,v){
-  const m={deps_v6:"departamentos",rsvp_v6:"reservas",egr_v6:"egresos",apart_v6:"apartados",usr_v6:"usuarios",tpl_v6:"templates",cfg_v6:"config"};
-  const t=m[k];if(!t)return;
-  try{await fetch(DB_URL+"?action=set&tab="+t+"&data="+encodeURIComponent(JSON.stringify(v)));}catch(e){}
+  const t=SYNC_TAB_MAP[k];if(!t)return false;
+  setPendingSync(k,v);
+  setSyncBar("Guardando cambios...","var(--ig)","var(--i)");
+  try{
+    const res=await sendSyncRequest(t,v);
+    if(!res.ok)throw new Error("HTTP "+res.status);
+    clearPendingSync(k);
+    setSyncBar("Cambios sincronizados","var(--sg)","var(--s)",1800);
+    return true;
+  }catch(e){
+    setSyncBar("No se pudo sincronizar. Los cambios quedaron solo en este dispositivo.","var(--wg)","var(--w)");
+    return false;
+  }
+}
+async function retryPendingSync(){
+  var pending=getPendingSync(),keys=Object.keys(pending);
+  for(var i=0;i<keys.length;i++)await syncTab(keys[i],pending[keys[i]]);
 }
 async function cargarSheets(){
-  const bar=document.getElementById("sync-bar");if(bar)bar.style.display="block";
+  const bar=document.getElementById("sync-bar");if(bar){bar.textContent="Sincronizando...";bar.style.display="block";bar.style.background="var(--ig)";bar.style.color="var(--i)";}
   try{
     const r=await fetch(DB_URL+"?action=getAll");const all=await r.json();
-    if(all.departamentos&&all.departamentos.length)deps=all.departamentos.map(function(d){return normDep(d);});
-    if(all.reservas&&all.reservas.length)rsvps=all.reservas;
-    if(all.egresos&&all.egresos.length)egrs=all.egresos;
-    if(all.apartados&&all.apartados.length)aparts=all.apartados;
-    if(all.usuarios&&all.usuarios.length)usrs=all.usuarios;
-    if(all.templates&&Object.keys(all.templates).length)tpls=all.templates;
-    if(all.config&&Object.keys(all.config).length)cfg=all.config;
+    if(Array.isArray(all.departamentos)&&!hasPendingSync("deps_v6"))deps=all.departamentos.map(function(d){return normDep(d);});
+    if(Array.isArray(all.reservas)&&!hasPendingSync("rsvp_v6"))rsvps=all.reservas;
+    if(Array.isArray(all.egresos)&&!hasPendingSync("egr_v6"))egrs=all.egresos;
+    if(Array.isArray(all.apartados)&&!hasPendingSync("apart_v6"))aparts=all.apartados;
+    if(Array.isArray(all.usuarios)&&!hasPendingSync("usr_v6"))usrs=all.usuarios;
+    if(all.templates&&!hasPendingSync("tpl_v6"))tpls=all.templates;
+    if(all.config&&!hasPendingSync("cfg_v6"))cfg=all.config;
     ["deps_v6","rsvp_v6","egr_v6","apart_v6","usr_v6","tpl_v6","cfg_v6"].forEach(function(k){
       var mk={deps_v6:deps,rsvp_v6:rsvps,egr_v6:egrs,apart_v6:aparts,usr_v6:usrs,tpl_v6:tpls,cfg_v6:cfg};
       try{localStorage.setItem(k,JSON.stringify(mk[k]));}catch(e){}
     });
-    if(bar)bar.style.display="none";
+    if(Object.keys(getPendingSync()).length){
+      setSyncBar("Hay cambios pendientes por sincronizar en este dispositivo.","var(--wg)","var(--w)");
+    } else if(bar)bar.style.display="none";
   }catch(e){
     if(bar){bar.textContent="Sin conexion - usando datos locales";bar.style.background="var(--wg)";bar.style.color="var(--w)";setTimeout(function(){bar.style.display="none";},3000);}
   }
