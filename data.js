@@ -106,17 +106,13 @@ function sv(k,v){
   if(SYNC_TAB_MAP[k])setPendingSync(k);
 }
 async function sendSyncRequest(tab,data,keepalive){
-  var payload="action=set&tab="+encodeURIComponent(tab)+"&data="+encodeURIComponent(JSON.stringify(data));
+  var payload=JSON.stringify({tab:tab,data:data});
   try{
     if(keepalive&&navigator.sendBeacon){
-      var beaconOk=navigator.sendBeacon(DB_URL,new URLSearchParams(payload));
+      var beaconOk=navigator.sendBeacon(DB_URL,payload);
       if(beaconOk)return {ok:true,status:202};
     }
-    await fetch(DB_URL,{method:"POST",mode:"no-cors",keepalive:!!keepalive,headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:payload});
-    return {ok:true,status:0,opaque:true};
-  }catch(e){}
-  try{
-    await fetch(DB_URL+"?action=set&tab="+tab+"&data="+encodeURIComponent(JSON.stringify(data)),{mode:"no-cors",keepalive:!!keepalive});
+    await fetch(DB_URL,{method:"POST",mode:"no-cors",keepalive:!!keepalive,body:payload});
     return {ok:true,status:0,opaque:true};
   }catch(e){}
   return {ok:false,status:0,statusText:"Network error"};
