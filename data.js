@@ -16,6 +16,7 @@ const ETQS=["{nombre}","{telefono}","{fecha_entrada}","{fecha_salida}","{dpto}",
 const SYNC_TAB_MAP={deps_v6:"departamentos",rsvp_v6:"reservas",egr_v6:"egresos",apart_v6:"apartados",usr_v6:"usuarios",tpl_v6:"templates",cfg_v6:"config"};
 const PENDING_SYNC_KEY="alb_pending_sync_v1";
 const SYNC_BACKOFF_MS=[800,1600,3200];
+const DEFAULT_USERS=[{user:"Hector",pass:"Ruiz Morelos",rol:"admin"}];
 var syncWriteQueue=Promise.resolve();
 
 function ld(k,d){try{return JSON.parse(localStorage.getItem(k)||"null")||d;}catch(e){return d;}}
@@ -37,6 +38,35 @@ function mergeReservasByUpdatedAt(remote,local){
 function reservasRemotasValidas(remote){
   return Array.isArray(remote);
 }
+function normalizeUsers(list){
+  if(!Array.isArray(list)||!list.length)return DEFAULT_USERS.slice();
+  var valid=list.filter(function(user){
+    return user&&typeof user.user==="string"&&user.user.trim()&&typeof user.pass==="string"&&user.pass.trim();
+  });
+  return valid.length?valid:DEFAULT_USERS.slice();
+}
+function normalizePendingSyncState(pending){
+  if(!pending||typeof pending!=="object")return {};
+  var clean={};
+  Object.keys(pending).forEach(function(key){
+    if(!SYNC_TAB_MAP[key])return;
+    var item=pending[key];
+    if(item&&typeof item.ts==="number")clean[key]={ts:item.ts};
+    else clean[key]={ts:Date.now()};
+  });
+  return clean;
+}
+function bootstrapLocalState(){
+  try{
+    var users=normalizeUsers(ld("usr_v6",DEFAULT_USERS));
+    localStorage.setItem("usr_v6",JSON.stringify(users));
+  }catch(e){}
+  try{
+    var pending=normalizePendingSyncState(getPendingSync());
+    localStorage.setItem(PENDING_SYNC_KEY,JSON.stringify(pending));
+  }catch(e){}
+}
+bootstrapLocalState();
 function delay(ms){return new Promise(function(resolve){setTimeout(resolve,ms);});}
 async function backendReservasCoinciden(expected){
   try{
@@ -174,7 +204,7 @@ async function cargarSheets(){
     }
     if(Array.isArray(all.egresos)&&!hasPendingSync("egr_v6"))egrs=all.egresos;
     if(Array.isArray(all.apartados)&&!hasPendingSync("apart_v6"))aparts=all.apartados;
-    if(Array.isArray(all.usuarios)&&!hasPendingSync("usr_v6"))usrs=all.usuarios;
+    if(Array.isArray(all.usuarios)&&!hasPendingSync("usr_v6"))usrs=normalizeUsers(all.usuarios);
     if(all.templates&&!hasPendingSync("tpl_v6"))tpls=all.templates;
     if(all.config&&!hasPendingSync("cfg_v6"))cfg=all.config;
     ["deps_v6","rsvp_v6","egr_v6","apart_v6","usr_v6","tpl_v6","cfg_v6"].forEach(function(k){
@@ -196,7 +226,7 @@ var deps=ld("deps_v6",[
 var rsvps=ld("rsvp_v6",[]);
 var egrs=ld("egr_v6",[]);
 var aparts=ld("apart_v6",[]);
-var usrs=ld("usr_v6",[{user:"Hector",pass:"Ruiz Morelos",rol:"admin"}]);
+var usrs=normalizeUsers(ld("usr_v6",DEFAULT_USERS));
 var tpls=ld("tpl_v6",{
   huesped:"Buen dia {nombre} confirmamos tu reserva del {fecha_entrada} al {fecha_salida}, pueden pasar a recoger las llaves del dpto {dpto} en la caseta de vigilancia, check in 3 PM, check out 11 AM.\n\nUBICACION {ubicacion}\nREGLAMENTO {reglamento}\nWiFi: {wifi} | Pass: {wifi_pass}",
   llaves:"Llegada proxima - {depto_nombre}\nHuesped: {nombre}\nEntrada: {fecha_entrada}\nSalida: {fecha_salida}\nPersonas: {personas}\n\nFavor tener el departamento listo.",
