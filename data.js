@@ -6,7 +6,7 @@ const COLORES_L=["#E6F1FB","#EAF3DE","#FBEAF0","#FAEEDA","#EEEDFE","#E1F5EE","#F
 const COL_ORIG={airbnb:"#E8393A",directo:"#185FA5",mary:"#0F6E56",alejandra:"#993556",gestor:"#854F0B",otro:"#533AB7"};
 const COL_LAB={airbnb:"Rojo (Airbnb)",directo:"Azul (Directo)",mary:"Verde (Mary)",alejandra:"Rosa (Alejandra)",gestor:"Naranja (Gestor)",otro:"Morado (Otro)"};
 const LOGO_B64="/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAA3ANEDASIAAhEBAxEB/8QAHAAAAQUBAQEAAAAAAAAAAAAAAAIDBAUGAQcI/8QAQhAAAQMDAQQFBwgJBQEAAAAAAQIDBAAFEQYSEyExFEFRk9EHFiJhcYGSFSMyNERFVJElNUNSU1VzobFCY3KCg8H/xAAbAQACAwEBAQAAAAAAAAAAAAABAgADBAYFB//EAC0RAAEDAgQDCAIDAAAAAAAAAAEAAgMEEQUSEyExQYEGFDJRYXGRoRUiFlLB/9oADAMBAAIRAxEAPwC388tUZ/Xk7vTS06x1Ofv2d3prO0A4661WWfMVpBrDU5+/J3emlDV2p88L5O701nArHM5ru0dnhw99HKhmctJ53anzxvk3vTSmtYalzxvc7vTWbB5HNKBOamVAOK1A1fqQ4/TU3vTU6Le9WvgK+WZqEdqnTVTYoiAyJDqck/RHZVvvMdfCvnuOdsO7TGCmFy3iT5roqHCNRokkPFT2rpfgBvL/AD1Hrw4RUtq8XgDjd5x9rpqoC+HBVCIV2nqUmA7HaQnmVk5Nc5S4ximIzCKOQ3PlsvUNDSxC7gAPVXKr3d8frWaP/U02bte1fQvksHsKzVK5pC/Oq21XFgKHEemrh/auiyXiA430i6sHeKwlOypRV29VdKykx+nGbMT7pHwYZL+oeL+l1avXvUTKQV3OWU9ocNRlakvw4pu0rvDWjs0WKYqHVEP7aeORwqU5HtbSSpyPHbA6yAK7fDxUmAGrAB9CuTqmxtlyQ3Kx51Rfh96yvjNIOqb/APzaX3hqRrQQz0d6GpnYOQd3jn7qzZVk8612afDuqSHN2cCFdnVN/wD5tL7w0k6m1AfviaPY6apsnNdzjmaFgiCVZr1NqIffU4f+ppPnJqQn9dTu9NVi1JNNqdA4ZpbBOSSrxOodRlskXubn+qaZ859Rg4N7m96aqg7hpWCedMleTyqZQgCQrleqdRJ5Xub3pphWrNRhXC9zu9NVThJFMq51LBNcq6Tq3UpUP03N701Liar1Cp1KV3mYRkftDWZBwc09GV88gjntCq3AIXX0R0qV+Ic+Kiou166KrsrF8z+jjrzXDioUmVOQdli3FfrKxioq/OB0+imMwD28TXqspC4XLgOq8x9S1psAT7K4zk0bQ7az0iPNaKRNvjTBXyGQnPsrr1nbbaD0u7OBvrUVYB95q5tJAPFKOgVTqqY+GP5KvzJZQMKcQPaoUk3CGAcyWh/2FUTloszOx0m4FO2Mp23QNr2U/FtWn3FbDbyHT2B3P+KYQ0I4vJ6JNWsJ2YB1W1t2prG3CQhy4MpUlOCCacOrdPZwLm3+RrFybPZYqAqQENJJwCtzZH9zQu2aeabQtxbSUrGUkvYB9nGuLn7C4FPK6R0sm5vyXssxzFWtDWtZt7rZedunRw+Um8+w1d6a1hpxt5e8u8dAUOG0cV5aqFpdRITLZSfVI4/5pldt04o7KbkhJ9T6TWzDexeB0NQ2ojlku3zt/gVVTjWKzRljmM39SvoFjUVjfI3N2iLzyw6K5cVNSJMF9paXUNuEqLZ2sAj1V8+s2GI/kQrm24R1DBI/Koshd0skhKWritsn6O7eP+K7f8dSVgLIpdz5heMzEqqicJZYtvQr3R3Ur1ihxY8iAStQVkFWMAGrVyzwbwlE2Q7JUHUhYRvPRTmvBk6uvD6G0z5HS0oHolwDaA9tXcnyk6g6I3GiGLAZSgIStWNo+9XhWD+PVkcrmzlpj5G69R3aOjfC19MHCXnYL0+dpyBHkNojxnVN4BUreHgc11qFpxpnM15hlzJyFPgV48ifdLw+lEvVIccXyQl7OfcMVKRpZhSsyJUh5XWc08eH0NO4ky9AFnnxWuqmgaW/mSvUnZuhY/ouXCKD/WzUZV88nrZwZ0c/Ea8+b03a0Hi0tf8AyUaeTY7WPsaD7SacnD283Hos4NeeTQrnU1/0rvG1Wua3s49MAH/7VN8vWsn64j8jS/ke2fgmveK6LTbsY6Ez+VUudQk8HfScd+tuW/aWm+WtSDiY1y6zXU3O3rGRLa+Kuos9tLeBDa9fCmlWO2ZyYTY/Oqj3I8M30rB30f1+06Z8NSeElr4hSelxSfrDXxCmTY7ZxxFQM+2kix23P1VP5mlLaQc3fCYPq+Yb8qT0iL/Hb+IU9FfZU+hLbiVHI4A1GatcBs+jFbB9lSo7KG3UbDaUjaHIYrNIIrfrdXMMx8Vl79miu7NFZdlqsV83hI2eIpt5SGW1OuqCUJGSo9Qp/wB1JUyh5JbcSFJI4gjINaLrMd1gvk6dqSU/dXIUd6ItJaioecKSlP7wAHM1nNUSbtZtOyNP3tGWlYVCkJyocD9AmvY2mEtthCEpSkcABwAqBqGyxr1a3IMoDZWMBQSCUesZ66llAvONTqfdXo+RloLWkAqdTlA4DmKnazirhtsXVdwtK+iL3gZYSWVuerIJz7K0x0otcOPEdue+ajpCWw5FQrAFWcOwWmO2jMGOt1I4uFsZPrxipZG6xMEXvWD6LrIszXye2jYYjPvFGSeazw4+qo9uXO0hcm4OoYbTtofViO7neBgk/RJI5V6ohnZSEpAAHKmpkCNMa3Mtht9vOdlYyKPFC68z0ZHiO+U++o3LK2FJ2mxsgpxwxipsqG215TJCIcKMtfQgpLaxhJVV6u6WWzXt6Ki1hlTWwhb7aRj0hwGOdMp1VaXro4q3wd++k7svEpQSewZ4mjYBTisdd3J7c6TMebFovKWyiMy2jZacHbtf6jWg0RFslwsSEPvlFxP1lTqvnSr39Xsq6vEtiatm13Cx7ZeRnD7iUp9yu2qSBHt9vu7lsRGkTAXi0mO/sKCTs5wF88VbHI6N2ZnFK9oe3K5W10gadt1rkmRIKlKbIQN5leccNkCs5YtPuXK3xJd3uy4F1ZOY4fIO0jq2kmtIL5pm2KShNs3cze7oMbsbe1z58sVJl3aLLtz82bYmpDTCckhxKyOOMf3p5qmWc3kN0kNPHCLMFlRTNS3PT9wjsXGNa7qlasIchDDifanjXocZwvsNO7C0baQrZUMEVk03vT1oeAVZuguhsuLy2NpI6sduavYNyucthElqyqDK+I230hRT24qhX8VZEEniDSfSz11RSNWRWjuejKMlTikJZKwMgcyTyFKt+qYk2TDYjtK3j7qmnEFXFpQGfeKl0vNXoBPVS0p4Y66UOJwDTqEAc+JpUb3TaE4GBQR21LQ2Nmkrb4HIoJtlGUkbPDnSEpJOKk7tNI2Ck8aVMCmlIxXGh86nH7wp48a6wj55IHWoUDwTr3L0qKVg0VQn2XiY0ZqI/YU98jxro0ZqIfYkd8jxoop85VIYF3zN1F+CR3yPGu+ZuoAOMJPfI8aKKOo5HIEDR1/P2JPfI8aWjR2oCfqSe+R40UUc5U0wl+Z+oPwSe+R410aP1B+DT3yPGiipqOCmmFUSPJZOfuzl0XBPSl7Pp79GE47Bmm0+Sqc08t2JEdiqcO0vdSEAE9uM0UURK5KWhSX/ACa3SVGZjyYzjyWXA4nbkpJJByMnNMPeSyc7OM3objb5d3u0iSkeljHb2UUUNZyIYE8vyWvvNBty1J2t5vA6JCd4Fdu1nNOnyY3NbS47zcl5pYAKVy04PH2+qiiprORyBS53k8nzVIMm2Nu7CCgBTqMYPVzqPG8mdzjpDbDcptkcmxMGyPVzoooazlMgXIfkvkRLi5PbtoU8sEErfSoYPqJpMnyWSHZvTkQFMyNoLCmpCU4OMdvZRRTarlMgVoxo2/NNpbEYqCetT6ST/epKNJ33IPQ098jxoooGVymQJ9Glb1jjET3qfGkL0pfDwTET3qfGiilzlMWBIVpO/fhE8P8AdR402dJX0/Y096jxoooajkoaEeaN964ie+T40uPpK+JeBVETgEftU+NFFQvJVuUL1/ocj+CfiFFFFV3TL//Z";
-const DB_URL="https://script.google.com/macros/s/AKfycbxnuJU72VCmzkJ8CxKZqs3Mi9Yb5c87-EothQ3RMRdwITsklsKFGGMVIE4Ibt40PTQS/exec";
+const DB_URL="https://script.google.com/macros/s/AKfycbyFF9LLIj9mf7AlumGRecBoUvrJr9AjVeKireu141wSe4gRrYa4mgLNWfu2lJdZvMjr/exec";
 const PDF_URL="https://script.google.com/macros/s/AKfycbwQGyi981UZPiJS1-2MNL802YOfPIwSr4e4HkwDQCGIj5OyF1WrZ1QfCFVptP0lOZnz/exec";
 const ICAL_BASE="https://hmorelos.github.io/albatros-app/";
 const ICAL_UPDT="https://script.google.com/macros/s/AKfycbzedB-wel8IpQ5bF-ebFiNWF4ZNHOPMAODma6hCJkoIBvwrLxfMZbZx6j_5l2UQmKCinw/exec";
@@ -15,6 +15,8 @@ const UBI_DEF="https://goo.gl/maps/aUSMKCMqsLnVWdFi9";
 const ETQS=["{nombre}","{telefono}","{fecha_entrada}","{fecha_salida}","{dpto}","{depto_nombre}","{personas}","{ubicacion}","{reglamento}","{wifi}","{wifi_pass}","{monto}","{deposito}"];
 const SYNC_TAB_MAP={deps_v6:"departamentos",rsvp_v6:"reservas",egr_v6:"egresos",apart_v6:"apartados",usr_v6:"usuarios",tpl_v6:"templates",cfg_v6:"config"};
 const PENDING_SYNC_KEY="alb_pending_sync_v1";
+const SYNC_BACKOFF_MS=[800,1600,3200];
+var syncWriteQueue=Promise.resolve();
 
 function ld(k,d){try{return JSON.parse(localStorage.getItem(k)||"null")||d;}catch(e){return d;}}
 function getPendingSync(){try{return JSON.parse(localStorage.getItem(PENDING_SYNC_KEY)||"{}")||{};}catch(e){return {};}}
@@ -94,7 +96,7 @@ async function sendSyncRequest(tab,data,keepalive){
   if(gtxt&&gtxt.trim().charAt(0)==="{")return getRes;
   return {ok:false,status:getRes.status||0,statusText:"Unexpected non-JSON response"};
 }
-async function syncTab(k,v,opts){
+async function runSyncTab(k,v,opts){
   const t=SYNC_TAB_MAP[k];if(!t)return false;
   opts=opts||{};
   var verify=opts.verify!==false;
@@ -105,16 +107,21 @@ async function syncTab(k,v,opts){
   if(!quiet)setSyncBar("Guardando cambios...","var(--ig)","var(--i)");
   try{
     var ok=false;
-    for(var attempt=1;attempt<=3;attempt++){
-      const res=await sendSyncRequest(t,v,keepalive);
+    for(var attempt=0;attempt<SYNC_BACKOFF_MS.length;attempt++){
+      if(attempt>0)await delay(SYNC_BACKOFF_MS[attempt-1]);
+      var current=v;
+      if(!opts.useProvidedData){
+        current=ld(k,null);
+        if(current===null||current===undefined){clearPendingSync(k);return true;}
+      }
+      const res=await sendSyncRequest(t,current,keepalive);
       if(!res.ok)throw new Error("HTTP "+res.status);
       if(verify&&k==="rsvp_v6"){
         await delay(650);
-        if(await backendReservasCoinciden(v)){ok=true;break;}
+        if(await backendReservasCoinciden(current)){ok=true;break;}
       } else {
         ok=true;break;
       }
-      await delay(700);
     }
     if(!ok)throw new Error("Verificacion remota fallida");
     if(canClearPending)clearPendingSync(k);
@@ -125,12 +132,21 @@ async function syncTab(k,v,opts){
     return false;
   }
 }
+function syncTab(k,v,opts){
+  const t=SYNC_TAB_MAP[k];if(!t)return Promise.resolve(false);
+  opts=opts||{};
+  setPendingSync(k);
+  syncWriteQueue=syncWriteQueue.catch(function(){return false;}).then(function(){
+    return runSyncTab(k,v,opts);
+  });
+  return syncWriteQueue;
+}
 async function retryPendingSync(){
   var pending=getPendingSync(),keys=Object.keys(pending);
   for(var i=0;i<keys.length;i++){
     var k=keys[i],v=ld(k,null);
     if(v===null||v===undefined){clearPendingSync(k);continue;}
-    await syncTab(k,v);
+    await syncTab(k,v,{useProvidedData:true});
   }
 }
 function flushPendingSync(){
@@ -138,7 +154,7 @@ function flushPendingSync(){
   for(var i=0;i<keys.length;i++){
     var k=keys[i],v=ld(k,null);
     if(v===null||v===undefined){clearPendingSync(k);continue;}
-    syncTab(k,v,{verify:false,keepalive:true,quiet:true});
+    syncTab(k,v,{verify:false,keepalive:true,quiet:true,useProvidedData:true});
   }
 }
 async function cargarSheets(){
