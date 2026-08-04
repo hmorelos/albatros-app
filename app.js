@@ -1096,7 +1096,9 @@ async function iniciarApp(){
   renderTodo();
   setInterval(async function(){await refreshSharedData();},60000);
   window.addEventListener("focus",function(){refreshSharedData();});
-  document.addEventListener("visibilitychange",function(){if(!document.hidden)refreshSharedData();});
+  document.addEventListener("visibilitychange",function(){if(document.hidden)flushPendingSync();else refreshSharedData();});
+  window.addEventListener("pagehide",function(){flushPendingSync();});
+  window.addEventListener("beforeunload",function(){flushPendingSync();});
 }
 
 if(sessionStorage.getItem("alb")){

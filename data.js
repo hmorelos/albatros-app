@@ -66,24 +66,32 @@ function setSyncBar(msg,bg,color,hideMs){
   }
 }
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}syncTab(k,v);}
-async function sendSyncRequest(tab,data){
+async function sendSyncRequest(tab,data,keepalive){
   var payload="action=set&tab="+encodeURIComponent(tab)+"&data="+encodeURIComponent(JSON.stringify(data));
   try{
-    var postRes=await fetch(DB_URL,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:payload});
+    if(keepalive&&navigator.sendBeacon){
+      var beaconOk=navigator.sendBeacon(DB_URL,new URLSearchParams(payload));
+      if(beaconOk)return {ok:true,status:202};
+    }
+    var postRes=await fetch(DB_URL,{method:"POST",keepalive:!!keepalive,headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:payload});
     if(postRes.ok)return postRes;
   }catch(e){}
-  return fetch(DB_URL+"?action=set&tab="+tab+"&data="+encodeURIComponent(JSON.stringify(data)));
+  return fetch(DB_URL+"?action=set&tab="+tab+"&data="+encodeURIComponent(JSON.stringify(data)),{keepalive:!!keepalive});
 }
-async function syncTab(k,v){
+async function syncTab(k,v,opts){
   const t=SYNC_TAB_MAP[k];if(!t)return false;
+  opts=opts||{};
+  var verify=opts.verify!==false;
+  var keepalive=!!opts.keepalive;
+  var quiet=!!opts.quiet;
   setPendingSync(k,v);
-  setSyncBar("Guardando cambios...","var(--ig)","var(--i)");
+  if(!quiet)setSyncBar("Guardando cambios...","var(--ig)","var(--i)");
   try{
     var ok=false;
     for(var attempt=1;attempt<=3;attempt++){
-      const res=await sendSyncRequest(t,v);
+      const res=await sendSyncRequest(t,v,keepalive);
       if(!res.ok)throw new Error("HTTP "+res.status);
-      if(k==="rsvp_v6"){
+      if(verify&&k==="rsvp_v6"){
         await delay(650);
         if(await backendReservasCoinciden(v)){ok=true;break;}
       } else {
@@ -93,16 +101,20 @@ async function syncTab(k,v){
     }
     if(!ok)throw new Error("Verificacion remota fallida");
     clearPendingSync(k);
-    setSyncBar("Cambios sincronizados","var(--sg)","var(--s)",1800);
+    if(!quiet)setSyncBar("Cambios sincronizados","var(--sg)","var(--s)",1800);
     return true;
   }catch(e){
-    setSyncBar("No se pudo sincronizar. Los cambios quedaron solo en este dispositivo.","var(--wg)","var(--w)");
+    if(!quiet)setSyncBar("No se pudo sincronizar. Los cambios quedaron solo en este dispositivo.","var(--wg)","var(--w)");
     return false;
   }
 }
 async function retryPendingSync(){
   var pending=getPendingSync(),keys=Object.keys(pending);
   for(var i=0;i<keys.length;i++)await syncTab(keys[i],pending[keys[i]]);
+}
+function flushPendingSync(){
+  var pending=getPendingSync(),keys=Object.keys(pending);
+  for(var i=0;i<keys.length;i++)syncTab(keys[i],pending[keys[i]],{verify:false,keepalive:true,quiet:true});
 }
 async function cargarSheets(){
   const bar=document.getElementById("sync-bar");if(bar){bar.textContent="Sincronizando...";bar.style.display="block";bar.style.background="var(--ig)";bar.style.color="var(--i)";}
