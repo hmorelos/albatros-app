@@ -155,6 +155,13 @@ function verApartadosPorVencer(){
   goTab("apart");
 }
 
+function irAMesFecha(fecha){
+  if(!fecha)return;
+  var d=new Date(fecha+"T12:00:00");
+  mes=d.getMonth();
+  ano=d.getFullYear();
+}
+
 // CALENDARIO
 function cambiarMes(d){mes+=d;if(mes>11){mes=0;ano++;}if(mes<0){mes=11;ano--;}renderCal();}
 function origenColor(o,c){if(c)return c;return COL_ORIG[o]||"#666";}
@@ -976,6 +983,8 @@ function guardarRsvp(){
   var obj={huesped:huesped,telefono:tel,correo:correo,dep:dep,personas:parseInt(per),entrada:ent,salida:sal,precio:precioFinal,deposito:depositoNum,numAirbnb:airbnb,origen:origen,colorReserva:colorR,pago:pago,anticipo:pago==="parcial"?parseMonto(anticipo):0,notas:notas,mensajes:msj};
   if(editRsvp){var i=rsvps.findIndex(function(x){return x.id===editRsvp;});if(i>=0)rsvps[i]=Object.assign({},rsvps[i],obj);}
   else rsvps.push(Object.assign({id:Date.now().toString(),creado:new Date().toISOString()},obj));
+  irAMesFecha(ent);
+  if(tabAct!=="cal")goTab("cal");
   sv("rsvp_v6",rsvps);cerrarRsvp();renderTodo();triggerIcalUpdate();
 }
 
