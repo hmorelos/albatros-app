@@ -171,10 +171,13 @@ textarea.fi{resize:vertical;min-height:50px;}
       <span style="font-size:12px;color:var(--text2)">&#128100; <span id="usr-nom"></span></span>
       <button class="btn btn-p" onclick="abrirRsvp()">+ Nueva reserva</button>
       <button class="btn btn-ap" onclick="abrirApartado()">Apartar fecha</button>
+      <button class="btn btn-g" onclick="exportarRespaldoLocal()" style="font-size:12px">Exportar</button>
+      <button class="btn btn-g" onclick="abrirImportacionRespaldo()" style="font-size:12px">Importar</button>
       <button class="btn btn-g" onclick="syncManual()" style="font-size:12px">&#8635; Sync</button>
       <button class="btn btn-g" onclick="logout()" style="font-size:12px">Salir</button>
     </div>
   </div>
+  <input type="file" id="backup-file" accept="application/json,.json" onchange="importarRespaldoLocal(event)" style="display:none">
   <div id="alertas-wrap" class="alertas"></div>
   <div class="stats" id="stats"></div>
   <div class="tabs">

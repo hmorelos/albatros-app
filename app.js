@@ -996,6 +996,74 @@ function pConfirm(t,txt,cb){confirmCb=cb;document.getElementById("co-tit").textC
 function cerrarConfirm(){document.getElementById("co").classList.remove("open");confirmCb=null;}
 function ejecutarConfirm(){if(confirmCb)confirmCb();cerrarConfirm();}
 function renderTodo(){renderStats();renderAlertas();renderCal();if(tabAct==="rsvp"){updFilDep();renderRsvp();}if(tabAct==="apart"){limpiarAparts();renderAparts();}if(tabAct==="hist")renderHist();if(tabAct==="fin")renderFin();if(tabAct==="dep")renderDeps();}
+function exportarRespaldoLocal(){
+  var payload={
+    exportedAt:new Date().toISOString(),
+    deps_v6:deps,
+    rsvp_v6:rsvps,
+    egr_v6:egrs,
+    apart_v6:aparts,
+    usr_v6:usrs,
+    tpl_v6:tpls,
+    cfg_v6:cfg,
+    pending:getPendingSync()
+  };
+  var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url;
+  a.download="albatros-respaldo-"+new Date().toISOString().slice(0,19).replace(/[T:]/g,"-")+".json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  setSyncBar("Respaldo exportado en JSON.","var(--sg)","var(--s)",2200);
+}
+function abrirImportacionRespaldo(){
+  var input=document.getElementById("backup-file");
+  if(!input)return;
+  input.value="";
+  input.click();
+}
+function importarRespaldoLocal(ev){
+  var file=ev&&ev.target&&ev.target.files?ev.target.files[0]:null;
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(){
+    try{
+      var data=JSON.parse(reader.result||"{}");
+      if(Array.isArray(data.deps_v6))deps=data.deps_v6.map(function(d){return normDep(d);});
+      if(Array.isArray(data.rsvp_v6))rsvps=mergeReservasByUpdatedAt(rsvps,data.rsvp_v6);
+      if(Array.isArray(data.egr_v6))egrs=data.egr_v6;
+      if(Array.isArray(data.apart_v6))aparts=data.apart_v6;
+      if(data.usr_v6!==undefined)usrs=normalizeUsers(data.usr_v6);
+      if(data.tpl_v6&&typeof data.tpl_v6==="object")tpls=data.tpl_v6;
+      if(data.cfg_v6&&typeof data.cfg_v6==="object")cfg=data.cfg_v6;
+
+      try{localStorage.setItem("deps_v6",JSON.stringify(deps));}catch(e){}
+      try{localStorage.setItem("rsvp_v6",JSON.stringify(rsvps));}catch(e){}
+      try{localStorage.setItem("egr_v6",JSON.stringify(egrs));}catch(e){}
+      try{localStorage.setItem("apart_v6",JSON.stringify(aparts));}catch(e){}
+      try{localStorage.setItem("usr_v6",JSON.stringify(usrs));}catch(e){}
+      try{localStorage.setItem("tpl_v6",JSON.stringify(tpls));}catch(e){}
+      try{localStorage.setItem("cfg_v6",JSON.stringify(cfg));}catch(e){}
+
+      if(Array.isArray(data.rsvp_v6))setPendingSync("rsvp_v6");
+      if(Array.isArray(data.apart_v6))setPendingSync("apart_v6");
+      if(Array.isArray(data.egr_v6))setPendingSync("egr_v6");
+      if(Array.isArray(data.deps_v6))setPendingSync("deps_v6");
+      if(data.tpl_v6&&typeof data.tpl_v6==="object")setPendingSync("tpl_v6");
+      if(data.cfg_v6&&typeof data.cfg_v6==="object")setPendingSync("cfg_v6");
+      if(data.usr_v6!==undefined)setPendingSync("usr_v6");
+
+      renderTodo();
+      setSyncBar("Respaldo importado. Quedo marcado para sincronizar.","var(--sg)","var(--s)",2600);
+    }catch(err){
+      setSyncBar("No se pudo importar el respaldo.","var(--wg)","var(--w)",2600);
+    }
+  };
+  reader.readAsText(file);
+}
 async function syncManual(){await retryPendingSync();await cargarSheets();renderTodo();}
 async function refreshSharedData(){await retryPendingSync();await cargarSheets();renderTodo();}
 
