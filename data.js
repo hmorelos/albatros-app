@@ -19,7 +19,7 @@ const PENDING_SYNC_KEY="alb_pending_sync_v1";
 function ld(k,d){try{return JSON.parse(localStorage.getItem(k)||"null")||d;}catch(e){return d;}}
 function getPendingSync(){try{return JSON.parse(localStorage.getItem(PENDING_SYNC_KEY)||"{}")||{};}catch(e){return {};}}
 function hasPendingSync(k){return Object.prototype.hasOwnProperty.call(getPendingSync(),k);}
-function setPendingSync(k,v){var pending=getPendingSync();pending[k]=v;try{localStorage.setItem(PENDING_SYNC_KEY,JSON.stringify(pending));}catch(e){}}
+function setPendingSync(k){var pending=getPendingSync();pending[k]={ts:Date.now()};try{localStorage.setItem(PENDING_SYNC_KEY,JSON.stringify(pending));}catch(e){}}
 function clearPendingSync(k){var pending=getPendingSync();if(!Object.prototype.hasOwnProperty.call(pending,k))return;delete pending[k];try{localStorage.setItem(PENDING_SYNC_KEY,JSON.stringify(pending));}catch(e){}}
 function mergeReservasByUpdatedAt(remote,local){
   var map={};
@@ -65,7 +65,10 @@ function setSyncBar(msg,bg,color,hideMs){
     setSyncBar._t=setTimeout(function(){bar.style.display="none";},hideMs);
   }
 }
-function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}syncTab(k,v);}
+function sv(k,v){
+  try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}
+  if(SYNC_TAB_MAP[k])setPendingSync(k);
+}
 async function sendSyncRequest(tab,data,keepalive){
   var payload="action=set&tab="+encodeURIComponent(tab)+"&data="+encodeURIComponent(JSON.stringify(data));
   try{
@@ -74,9 +77,22 @@ async function sendSyncRequest(tab,data,keepalive){
       if(beaconOk)return {ok:true,status:202};
     }
     var postRes=await fetch(DB_URL,{method:"POST",keepalive:!!keepalive,headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:payload});
-    if(postRes.ok)return postRes;
+    if(postRes.ok){
+      var ct=(postRes.headers&&postRes.headers.get?postRes.headers.get("content-type"):"")||"";
+      if(ct.toLowerCase().indexOf("application/json")>=0)return postRes;
+      var txt="";
+      try{txt=await postRes.text();}catch(e){}
+      if(txt&&txt.trim().charAt(0)==="{")return postRes;
+    }
   }catch(e){}
-  return fetch(DB_URL+"?action=set&tab="+tab+"&data="+encodeURIComponent(JSON.stringify(data)),{keepalive:!!keepalive});
+  var getRes=await fetch(DB_URL+"?action=set&tab="+tab+"&data="+encodeURIComponent(JSON.stringify(data)),{keepalive:!!keepalive});
+  if(!getRes.ok)return getRes;
+  var gct=(getRes.headers&&getRes.headers.get?getRes.headers.get("content-type"):"")||"";
+  if(gct.toLowerCase().indexOf("application/json")>=0)return getRes;
+  var gtxt="";
+  try{gtxt=await getRes.text();}catch(e){}
+  if(gtxt&&gtxt.trim().charAt(0)==="{")return getRes;
+  return {ok:false,status:getRes.status||0,statusText:"Unexpected non-JSON response"};
 }
 async function syncTab(k,v,opts){
   const t=SYNC_TAB_MAP[k];if(!t)return false;
@@ -84,7 +100,8 @@ async function syncTab(k,v,opts){
   var verify=opts.verify!==false;
   var keepalive=!!opts.keepalive;
   var quiet=!!opts.quiet;
-  setPendingSync(k,v);
+  var canClearPending=!(k==="rsvp_v6"&&!verify);
+  setPendingSync(k);
   if(!quiet)setSyncBar("Guardando cambios...","var(--ig)","var(--i)");
   try{
     var ok=false;
@@ -100,7 +117,7 @@ async function syncTab(k,v,opts){
       await delay(700);
     }
     if(!ok)throw new Error("Verificacion remota fallida");
-    clearPendingSync(k);
+    if(canClearPending)clearPendingSync(k);
     if(!quiet)setSyncBar("Cambios sincronizados","var(--sg)","var(--s)",1800);
     return true;
   }catch(e){
@@ -110,11 +127,19 @@ async function syncTab(k,v,opts){
 }
 async function retryPendingSync(){
   var pending=getPendingSync(),keys=Object.keys(pending);
-  for(var i=0;i<keys.length;i++)await syncTab(keys[i],pending[keys[i]]);
+  for(var i=0;i<keys.length;i++){
+    var k=keys[i],v=ld(k,null);
+    if(v===null||v===undefined){clearPendingSync(k);continue;}
+    await syncTab(k,v);
+  }
 }
 function flushPendingSync(){
   var pending=getPendingSync(),keys=Object.keys(pending);
-  for(var i=0;i<keys.length;i++)syncTab(keys[i],pending[keys[i]],{verify:false,keepalive:true,quiet:true});
+  for(var i=0;i<keys.length;i++){
+    var k=keys[i],v=ld(k,null);
+    if(v===null||v===undefined){clearPendingSync(k);continue;}
+    syncTab(k,v,{verify:false,keepalive:true,quiet:true});
+  }
 }
 async function cargarSheets(){
   const bar=document.getElementById("sync-bar");if(bar){bar.textContent="Sincronizando...";bar.style.display="block";bar.style.background="var(--ig)";bar.style.color="var(--i)";}

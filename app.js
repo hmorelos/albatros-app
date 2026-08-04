@@ -959,7 +959,7 @@ function abrirRsvp(id,prefill){
   }
 }
 function cerrarRsvp(){document.getElementById("mo-rsvp").classList.remove("open");editRsvp=null;}
-function guardarRsvp(){
+async function guardarRsvp(){
   limpiarErrs("mo-rsvp");
   var huesped=document.getElementById("f-huesped").value.trim(),tel=document.getElementById("f-tel").value.trim();
   var correo=document.getElementById("f-correo").value.trim(),dep=document.getElementById("f-dep").value;
@@ -985,7 +985,9 @@ function guardarRsvp(){
   else rsvps.push(Object.assign({id:Date.now().toString(),creado:new Date().toISOString()},obj));
   irAMesFecha(ent);
   if(tabAct!=="cal")goTab("cal");
-  sv("rsvp_v6",rsvps);cerrarRsvp();renderTodo();triggerIcalUpdate();
+  sv("rsvp_v6",rsvps);
+  await syncTab("rsvp_v6",rsvps);
+  cerrarRsvp();renderTodo();triggerIcalUpdate();
 }
 
 // UTILS
@@ -1089,16 +1091,12 @@ function renderDepto(){
 
 async function iniciarApp(){
   document.getElementById("fecha-hoy").textContent=new Date().toLocaleDateString("es-MX",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+  await retryPendingSync();
   await cargarSheets();
   cargarHistoricas();
   limpiarAparts();
   autoSyncIcals();
   renderTodo();
-  setInterval(async function(){await refreshSharedData();},60000);
-  window.addEventListener("focus",function(){refreshSharedData();});
-  document.addEventListener("visibilitychange",function(){if(document.hidden)flushPendingSync();else refreshSharedData();});
-  window.addEventListener("pagehide",function(){flushPendingSync();});
-  window.addEventListener("beforeunload",function(){flushPendingSync();});
 }
 
 if(sessionStorage.getItem("alb")){
