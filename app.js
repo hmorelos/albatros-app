@@ -1002,6 +1002,8 @@ async function refreshSharedData(){await retryPendingSync();await cargarSheets()
 // LOGIN
 function doLogin(){
   var u=document.getElementById("lu").value.trim(),p=document.getElementById("lp").value.trim();
+  usrs=normalizeUsers(usrs);
+  try{localStorage.setItem("usr_v6",JSON.stringify(usrs));}catch(e){}
   var found=usrs.find(function(x){return x.user.toLowerCase()===u.toLowerCase()&&x.pass===p;});
   if(found){sessionStorage.setItem("alb",u);document.getElementById("login-screen").style.display="none";document.getElementById("app").style.display="";document.getElementById("usr-nom").textContent=u;iniciarApp();}
   else{document.getElementById("login-err").style.display="block";}

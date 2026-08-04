@@ -112,23 +112,14 @@ async function sendSyncRequest(tab,data,keepalive){
       var beaconOk=navigator.sendBeacon(DB_URL,new URLSearchParams(payload));
       if(beaconOk)return {ok:true,status:202};
     }
-    var postRes=await fetch(DB_URL,{method:"POST",keepalive:!!keepalive,headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:payload});
-    if(postRes.ok){
-      var ct=(postRes.headers&&postRes.headers.get?postRes.headers.get("content-type"):"")||"";
-      if(ct.toLowerCase().indexOf("application/json")>=0)return postRes;
-      var txt="";
-      try{txt=await postRes.text();}catch(e){}
-      if(txt&&txt.trim().charAt(0)==="{")return postRes;
-    }
+    await fetch(DB_URL,{method:"POST",mode:"no-cors",keepalive:!!keepalive,headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:payload});
+    return {ok:true,status:0,opaque:true};
   }catch(e){}
-  var getRes=await fetch(DB_URL+"?action=set&tab="+tab+"&data="+encodeURIComponent(JSON.stringify(data)),{keepalive:!!keepalive});
-  if(!getRes.ok)return getRes;
-  var gct=(getRes.headers&&getRes.headers.get?getRes.headers.get("content-type"):"")||"";
-  if(gct.toLowerCase().indexOf("application/json")>=0)return getRes;
-  var gtxt="";
-  try{gtxt=await getRes.text();}catch(e){}
-  if(gtxt&&gtxt.trim().charAt(0)==="{")return getRes;
-  return {ok:false,status:getRes.status||0,statusText:"Unexpected non-JSON response"};
+  try{
+    await fetch(DB_URL+"?action=set&tab="+tab+"&data="+encodeURIComponent(JSON.stringify(data)),{mode:"no-cors",keepalive:!!keepalive});
+    return {ok:true,status:0,opaque:true};
+  }catch(e){}
+  return {ok:false,status:0,statusText:"Network error"};
 }
 async function runSyncTab(k,v,opts){
   const t=SYNC_TAB_MAP[k];if(!t)return false;
