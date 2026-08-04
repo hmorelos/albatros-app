@@ -34,13 +34,17 @@ function mergeReservasByUpdatedAt(remote,local){
   });
   return Object.keys(map).map(function(k){return map[k];});
 }
+function reservasRemotasValidas(remote){
+  return Array.isArray(remote);
+}
 function delay(ms){return new Promise(function(resolve){setTimeout(resolve,ms);});}
 async function backendReservasCoinciden(expected){
   try{
     var resp=await fetch(DB_URL+"?action=getAll");
     if(!resp.ok)return false;
     var all=await resp.json();
-    var remote=Array.isArray(all.reservas)?all.reservas:[];
+    if(!reservasRemotasValidas(all.reservas))return false;
+    var remote=all.reservas;
     if(remote.length!==expected.length)return false;
     var map={};
     remote.forEach(function(r){if(r&&r.id)map[r.id]=r;});
@@ -162,9 +166,11 @@ async function cargarSheets(){
   try{
     const r=await fetch(DB_URL+"?action=getAll");const all=await r.json();
     if(Array.isArray(all.departamentos)&&!hasPendingSync("deps_v6"))deps=all.departamentos.map(function(d){return normDep(d);});
-    if(Array.isArray(all.reservas)){
+    if(reservasRemotasValidas(all.reservas)){
       var localRsvps=ld("rsvp_v6",rsvps);
       rsvps=mergeReservasByUpdatedAt(all.reservas,localRsvps);
+    } else if(all.reservas!==undefined){
+      setSyncBar("Backend invalido: reservas no regreso una lista.","var(--wg)","var(--w)");
     }
     if(Array.isArray(all.egresos)&&!hasPendingSync("egr_v6"))egrs=all.egresos;
     if(Array.isArray(all.apartados)&&!hasPendingSync("apart_v6"))aparts=all.apartados;
