@@ -21,6 +21,17 @@ function getPendingSync(){try{return JSON.parse(localStorage.getItem(PENDING_SYN
 function hasPendingSync(k){return Object.prototype.hasOwnProperty.call(getPendingSync(),k);}
 function setPendingSync(k,v){var pending=getPendingSync();pending[k]=v;try{localStorage.setItem(PENDING_SYNC_KEY,JSON.stringify(pending));}catch(e){}}
 function clearPendingSync(k){var pending=getPendingSync();if(!Object.prototype.hasOwnProperty.call(pending,k))return;delete pending[k];try{localStorage.setItem(PENDING_SYNC_KEY,JSON.stringify(pending));}catch(e){}}
+function mergeReservasByUpdatedAt(remote,local){
+  var map={};
+  function stamp(r){return r&&r.updatedAt?new Date(r.updatedAt).getTime():(r&&r.creado?new Date(r.creado).getTime():0);}
+  (Array.isArray(remote)?remote:[]).forEach(function(r){if(r&&r.id)map[r.id]=r;});
+  (Array.isArray(local)?local:[]).forEach(function(r){
+    if(!r||!r.id)return;
+    var cur=map[r.id];
+    if(!cur||stamp(r)>=stamp(cur))map[r.id]=r;
+  });
+  return Object.keys(map).map(function(k){return map[k];});
+}
 function setSyncBar(msg,bg,color,hideMs){
   var bar=document.getElementById("sync-bar");
   if(!bar)return;
@@ -66,7 +77,10 @@ async function cargarSheets(){
   try{
     const r=await fetch(DB_URL+"?action=getAll");const all=await r.json();
     if(Array.isArray(all.departamentos)&&!hasPendingSync("deps_v6"))deps=all.departamentos.map(function(d){return normDep(d);});
-    if(Array.isArray(all.reservas)&&!hasPendingSync("rsvp_v6"))rsvps=all.reservas;
+    if(Array.isArray(all.reservas)){
+      var localRsvps=ld("rsvp_v6",rsvps);
+      rsvps=mergeReservasByUpdatedAt(all.reservas,localRsvps);
+    }
     if(Array.isArray(all.egresos)&&!hasPendingSync("egr_v6"))egrs=all.egresos;
     if(Array.isArray(all.apartados)&&!hasPendingSync("apart_v6"))aparts=all.apartados;
     if(Array.isArray(all.usuarios)&&!hasPendingSync("usr_v6"))usrs=all.usuarios;

@@ -980,7 +980,7 @@ function guardarRsvp(){
   var precioFinal=getPrecioTotal();
   var depositoNum=parseMonto(deposito);
   var msj=editRsvp?(rsvps.find(function(x){return x.id===editRsvp;})||{mensajes:{}}).mensajes||{}:{};
-  var obj={huesped:huesped,telefono:tel,correo:correo,dep:dep,personas:parseInt(per),entrada:ent,salida:sal,precio:precioFinal,deposito:depositoNum,numAirbnb:airbnb,origen:origen,colorReserva:colorR,pago:pago,anticipo:pago==="parcial"?parseMonto(anticipo):0,notas:notas,mensajes:msj};
+  var obj={huesped:huesped,telefono:tel,correo:correo,dep:dep,personas:parseInt(per),entrada:ent,salida:sal,precio:precioFinal,deposito:depositoNum,numAirbnb:airbnb,origen:origen,colorReserva:colorR,pago:pago,anticipo:pago==="parcial"?parseMonto(anticipo):0,notas:notas,mensajes:msj,updatedAt:new Date().toISOString()};
   if(editRsvp){var i=rsvps.findIndex(function(x){return x.id===editRsvp;});if(i>=0)rsvps[i]=Object.assign({},rsvps[i],obj);}
   else rsvps.push(Object.assign({id:Date.now().toString(),creado:new Date().toISOString()},obj));
   irAMesFecha(ent);
