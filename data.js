@@ -27,16 +27,26 @@ function getPendingSync(){try{return JSON.parse(localStorage.getItem(PENDING_SYN
 function hasPendingSync(k){return Object.prototype.hasOwnProperty.call(getPendingSync(),k);}
 function setPendingSync(k){var pending=getPendingSync();pending[k]={ts:Date.now()};try{localStorage.setItem(PENDING_SYNC_KEY,JSON.stringify(pending));}catch(e){}}
 function clearPendingSync(k){var pending=getPendingSync();if(!Object.prototype.hasOwnProperty.call(pending,k))return;delete pending[k];try{localStorage.setItem(PENDING_SYNC_KEY,JSON.stringify(pending));}catch(e){}}
+function reservaValida(r){
+  return !!(r&&typeof r==="object"&&r.id&&r.dep&&r.huesped&&typeof r.entrada==="string"&&typeof r.salida==="string");
+}
 function mergeReservasByUpdatedAt(remote,local){
   var map={};
   function stamp(r){return r&&r.updatedAt?new Date(r.updatedAt).getTime():(r&&r.creado?new Date(r.creado).getTime():0);}
-  (Array.isArray(remote)?remote:[]).forEach(function(r){if(r&&r.id)map[r.id]=r;});
+  (Array.isArray(remote)?remote:[]).forEach(function(r){if(reservaValida(r))map[r.id]=r;});
   (Array.isArray(local)?local:[]).forEach(function(r){
-    if(!r||!r.id)return;
+    if(!reservaValida(r))return;
     var cur=map[r.id];
     if(!cur||stamp(r)>=stamp(cur))map[r.id]=r;
   });
   return Object.keys(map).map(function(k){return map[k];});
+}
+function depSyncShape(dep){
+  var d=normDep(dep||{});
+  // icalF/icalS are volatile and can grow very large; keep them local.
+  d.icalF=[];
+  d.icalS=null;
+  return d;
 }
 function reservasRemotasValidas(remote){
   return Array.isArray(remote);
@@ -168,6 +178,12 @@ async function runSyncTab(k,v,opts){
         current=ld(k,null);
         if(current===null||current===undefined){clearPendingSync(k);return true;}
       }
+      if(k==="rsvp_v6"&&Array.isArray(current)){
+        current=current.filter(reservaValida);
+      }
+      if(k==="deps_v6"&&Array.isArray(current)){
+        current=current.map(depSyncShape);
+      }
       var usedChunks=false;
       if(useChunked&&k==="rsvp_v6"&&Array.isArray(current)&&current.length>RSVP_CHUNK_SIZE){
         var chunkRes=await sendReservasInChunks(current,keepalive);
@@ -256,7 +272,7 @@ var deps=ld("deps_v6",[
   {id:"dep1",nom:"Albatros 16",num:"16",dir:"Albatros 16, Manzanillo, Colima",color:"#185FA5",colorL:"#E6F1FB",ical:"",icalF:[],icalS:null,ubi:UBI_DEF,acceso:"Pasar a recoger las llaves en la caseta de vigilancia. Check in a partir de las 3 PM, check out antes de las 11 AM.",telL:"",telA:"",wifi:"Albatros 16",wpass:"Ixtapa16",regl:REGL_DEF},
   {id:"dep2",nom:"Albatros 30",num:"30",dir:"Albatros 30, Manzanillo, Colima",color:"#3B6D11",colorL:"#EAF3DE",ical:"",icalF:[],icalS:null,ubi:UBI_DEF,acceso:"Pasar a recoger las llaves en la caseta de vigilancia. Check in a partir de las 3 PM, check out antes de las 11 AM.",telL:"",telA:"",wifi:"Albatros 30",wpass:"Ixtapa30",regl:REGL_DEF}
 ]);
-var rsvps=ld("rsvp_v6",[]);
+var rsvps=ld("rsvp_v6",[]).filter(reservaValida);
 var egrs=ld("egr_v6",[]);
 var aparts=ld("apart_v6",[]);
 var usrs=normalizeUsers(ld("usr_v6",DEFAULT_USERS));

@@ -256,7 +256,7 @@ function renderRsvp(){
   var fd=document.getElementById("fil-dep").value,fe=document.getElementById("fil-est").value;
   var fp=document.getElementById("fil-pago").value,fm=document.getElementById("fil-msg").value;
   var hoy=fechaHoy();
-  var f=rsvps.filter(function(r){return fd==="todos"||r.dep===fd;});
+  var f=rsvps.filter(function(r){return r&&typeof r.entrada==="string"&&typeof r.salida==="string"&&(fd==="todos"||r.dep===fd);});
   if(fe==="prox")f=f.filter(function(r){return r.salida>=hoy;});
   if(fe==="pas")f=f.filter(function(r){return r.salida<hoy;});
   if(fp==="pendiente")f=f.filter(rsvpConAdeudo);
@@ -917,14 +917,15 @@ function renderAlertas(){
   var hoy=fechaHoy();
   var man=new Date();man.setDate(man.getDate()+1);
   var manS=man.getFullYear()+"-"+String(man.getMonth()+1).padStart(2,"0")+"-"+String(man.getDate()).padStart(2,"0");
+  var rs=rsvps.filter(function(r){return r&&typeof r.entrada==="string"&&typeof r.salida==="string";});
   var als=[];
-  var salHoy=rsvps.filter(function(r){return r.salida===hoy;});
-  var llegHoy=rsvps.filter(function(r){return r.entrada===hoy;});
-  var llegMan=rsvps.filter(function(r){return r.entrada===manS;});
-  var pend=rsvps.filter(rsvpConAdeudo);
+  var salHoy=rs.filter(function(r){return r.salida===hoy;});
+  var llegHoy=rs.filter(function(r){return r.entrada===hoy;});
+  var llegMan=rs.filter(function(r){return r.entrada===manS;});
+  var pend=rs.filter(rsvpConAdeudo);
   limpiarAparts();
   var apExp=aparts.filter(function(a){var h=(a.expira-Date.now())/3600000;return h<6&&h>0;});
-  var msgPend=rsvps.filter(function(r){return msgPendiente(r)&&r.salida>=hoy;});
+  var msgPend=rs.filter(function(r){return msgPendiente(r)&&r.salida>=hoy;});
   if(salHoy.length)als.push("<div class=\"al al-hoy al-click\" onclick=\"verSalidasHoy()\">Check-out hoy: "+salHoy.map(function(r){return r.huesped;}).join(", ")+"</div>");
   if(llegHoy.length)als.push("<div class=\"al al-hoy al-click\" onclick=\"verLlegadasHoy()\">Llegadas hoy: "+llegHoy.map(function(r){return r.huesped;}).join(", ")+"</div>");
   if(llegMan.length)als.push("<div class=\"al al-man al-click\" onclick=\"verLlegadasManana()\">Llegadas manana: "+llegMan.map(function(r){return r.huesped;}).join(", ")+"</div>");
@@ -935,9 +936,10 @@ function renderAlertas(){
 }
 function renderStats(){
   var h=new Date(),ms=h.getFullYear()+"-"+String(h.getMonth()+1).padStart(2,"0");
-  var iM=rsvps.filter(function(r){return r.entrada.startsWith(ms);}).reduce(function(s,r){return s+r.precio;},0);
-  var pend=rsvps.filter(rsvpConAdeudo);
-  var prox=rsvps.filter(function(r){return r.salida>=fechaHoy();}).length;
+  var rs=rsvps.filter(function(r){return r&&typeof r.entrada==="string"&&typeof r.salida==="string";});
+  var iM=rs.filter(function(r){return r.entrada.startsWith(ms);}).reduce(function(s,r){return s+r.precio;},0);
+  var pend=rs.filter(rsvpConAdeudo);
+  var prox=rs.filter(function(r){return r.salida>=fechaHoy();}).length;
   document.getElementById("stats").innerHTML="<div class=\"sc sc-click\" onclick=\"verDeptos()\"><div class=\"sc-l\">Deptos</div><div class=\"sc-v\">"+deps.length+"</div><div class=\"sc-s\">activos</div></div><div class=\"sc sc-click\" onclick=\"verProximasLlegadas()\"><div class=\"sc-l\">Proximas llegadas</div><div class=\"sc-v\">"+prox+"</div><div class=\"sc-s\">reservadas</div></div><div class=\"sc sc-click\" onclick=\"verIngresosMes()\"><div class=\"sc-l\">Ingresos este mes</div><div class=\"sc-v\" style=\"color:var(--s)\">$"+iM.toLocaleString("es-MX")+"</div><div class=\"sc-s\">MXN</div></div><div class=\"sc sc-click\" onclick=\"verPorCobrar()\"><div class=\"sc-l\">Por cobrar</div><div class=\"sc-v\" style=\""+(pend.length?"color:var(--w)":"")+"\">$"+totalPorCobrar(pend).toLocaleString("es-MX")+"</div><div class=\"sc-s\">"+pend.length+" pendiente"+(pend.length!==1?"s":"")+"</div></div><div class=\"sc sc-click\" onclick=\"verApartados()\"><div class=\"sc-l\">Apartados activos</div><div class=\"sc-v\" style=\"color:#7c3aed\">"+aparts.length+"</div><div class=\"sc-s\">en espera</div></div>";
 }
 
