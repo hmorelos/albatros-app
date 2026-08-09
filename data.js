@@ -16,6 +16,9 @@ const ETQS=["{nombre}","{telefono}","{fecha_entrada}","{fecha_salida}","{dpto}",
 const SYNC_TAB_MAP={deps_v6:"departamentos",rsvp_v6:"reservas",egr_v6:"egresos",apart_v6:"apartados",usr_v6:"usuarios",tpl_v6:"templates",cfg_v6:"config"};
 const PENDING_SYNC_KEY="alb_pending_sync_v1";
 const SYNC_BACKOFF_MS=[800,1600,3200];
+const RSVP_CHUNK_SIZE=12;
+const RSVP_CHUNK_DELAY_MS=120;
+const CHUNK_SYNC_DEFAULT=true;
 const DEFAULT_USERS=[{user:"Hector",pass:"Ruiz Morelos",rol:"admin"}];
 var syncWriteQueue=Promise.resolve();
 
@@ -105,17 +108,46 @@ function sv(k,v){
   try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}
   if(SYNC_TAB_MAP[k])setPendingSync(k);
 }
-async function sendSyncRequest(tab,data,keepalive){
-  var payload=JSON.stringify({tab:tab,data:data});
+function chunkList(list,size){
+  var out=[];
+  var step=Math.max(1,size||1);
+  for(var i=0;i<list.length;i+=step)out.push(list.slice(i,i+step));
+  return out;
+}
+function chunkSyncEnabled(){
+  try{
+    var flag=localStorage.getItem("alb_chunk_sync_v1");
+    if(flag===null)return CHUNK_SYNC_DEFAULT;
+    return flag==="1";
+  }catch(e){return CHUNK_SYNC_DEFAULT;}
+}
+async function postSyncPayload(payload,keepalive){
+  var raw=JSON.stringify(payload);
   try{
     if(keepalive&&navigator.sendBeacon){
-      var beaconOk=navigator.sendBeacon(DB_URL,payload);
+      var beaconOk=navigator.sendBeacon(DB_URL,raw);
       if(beaconOk)return {ok:true,status:202};
     }
-    await fetch(DB_URL,{method:"POST",mode:"no-cors",keepalive:!!keepalive,body:payload});
+    await fetch(DB_URL,{method:"POST",mode:"no-cors",keepalive:!!keepalive,body:raw});
     return {ok:true,status:0,opaque:true};
   }catch(e){}
   return {ok:false,status:0,statusText:"Network error"};
+}
+async function sendSyncRequest(tab,data,keepalive){
+  return postSyncPayload({tab:tab,data:data},keepalive);
+}
+async function sendReservasInChunks(data,keepalive){
+  if(!Array.isArray(data))return {ok:false,status:0,statusText:"Datos invalidos"};
+  var chunks=chunkList(data,RSVP_CHUNK_SIZE);
+  var totalChunks=chunks.length;
+  var start=await postSyncPayload({action:"replaceRowsStart",tab:"reservas",totalRows:data.length,totalChunks:totalChunks},keepalive);
+  if(!start.ok)return start;
+  for(var i=0;i<chunks.length;i++){
+    var part=await postSyncPayload({action:"replaceRowsChunk",tab:"reservas",chunkIndex:i+1,totalChunks:totalChunks,rows:chunks[i]},keepalive);
+    if(!part.ok)return part;
+    if(i<chunks.length-1)await delay(RSVP_CHUNK_DELAY_MS);
+  }
+  return postSyncPayload({action:"replaceRowsCommit",tab:"reservas",totalRows:data.length,totalChunks:totalChunks},keepalive);
 }
 async function runSyncTab(k,v,opts){
   const t=SYNC_TAB_MAP[k];if(!t)return false;
@@ -123,6 +155,7 @@ async function runSyncTab(k,v,opts){
   var verify=opts.verify!==false;
   var keepalive=!!opts.keepalive;
   var quiet=!!opts.quiet;
+  var useChunked=opts.chunked===true||chunkSyncEnabled();
   var canClearPending=!(k==="rsvp_v6"&&!verify);
   setPendingSync(k);
   if(!quiet)setSyncBar("Guardando cambios...","var(--ig)","var(--i)");
@@ -135,8 +168,21 @@ async function runSyncTab(k,v,opts){
         current=ld(k,null);
         if(current===null||current===undefined){clearPendingSync(k);return true;}
       }
-      const res=await sendSyncRequest(t,current,keepalive);
-      if(!res.ok)throw new Error("HTTP "+res.status);
+      var usedChunks=false;
+      if(useChunked&&k==="rsvp_v6"&&Array.isArray(current)&&current.length>RSVP_CHUNK_SIZE){
+        var chunkRes=await sendReservasInChunks(current,keepalive);
+        if(chunkRes.ok){
+          usedChunks=true;
+          await delay(700);
+          if(!(await backendReservasCoinciden(current))){
+            usedChunks=false;
+          }
+        }
+      }
+      if(!usedChunks){
+        const res=await sendSyncRequest(t,current,keepalive);
+        if(!res.ok)throw new Error("HTTP "+res.status);
+      }
       if(verify&&k==="rsvp_v6"){
         await delay(650);
         if(await backendReservasCoinciden(current)){ok=true;break;}

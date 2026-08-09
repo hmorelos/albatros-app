@@ -5,6 +5,7 @@ var mes=new Date().getMonth(),ano=new Date().getFullYear();
 var editRsvp=null,editEgr=null,editDep=null,confirmCb=null,colorSel=COLORES[0],tabAct="cal",finTabAct="res",focusTpl=null;
 var depById=function(id){return normDep(deps.find(function(d){return d.id===id;}));};
 var WA_REPORTE_NUM="524431702533";
+var ICAL_AUTO_SYNC_MS=6*60*60*1000;
 
 var toggleAnticipo=function(){document.getElementById("fg-anticipo").style.display=document.getElementById("f-pago").value==="parcial"?"":"none";};
 var updateColor=function(){var o=document.getElementById("f-origen").value;document.getElementById("f-color").value=COL_ORIG[o]||"#185FA5";document.getElementById("color-lbl").textContent=COL_LAB[o]||"";};
@@ -396,8 +397,10 @@ function limpiarAparts(){
   var ahora=Date.now();
   var prev=aparts.length;
   aparts=aparts.filter(function(a){return ahora<=a.expira;});
-  sv("apart_v6",aparts);
-  if(aparts.length!==prev)triggerIcalUpdate();
+  if(aparts.length!==prev){
+    sv("apart_v6",aparts);
+    triggerIcalUpdate();
+  }
 }
 function renderAparts(){
   var lista=document.getElementById("lista-apart");
@@ -832,7 +835,19 @@ function parsearIcal(txt){
 }
 function pfi(s){return new Date(parseInt(s.slice(0,4)),parseInt(s.slice(4,6))-1,parseInt(s.slice(6,8)));}
 async function triggerIcalUpdate(){try{await fetch(ICAL_UPDT);}catch(e){}}
-function autoSyncIcals(){deps.forEach(function(dep){if(dep.id==="dep1"||dep.id==="dep2")syncIcal(dep.id);});}
+function shouldAutoSyncIcal(dep){
+  if(!dep||!dep.icalAirbnb)return false;
+  if(!Array.isArray(dep.icalF)||!dep.icalF.length)return true;
+  if(!dep.icalS)return true;
+  var last=Date.parse(dep.icalS);
+  if(isNaN(last))return true;
+  return Date.now()-last>=ICAL_AUTO_SYNC_MS;
+}
+function autoSyncIcals(){
+  deps.forEach(function(dep){
+    if((dep.id==="dep1"||dep.id==="dep2")&&shouldAutoSyncIcal(dep))syncIcal(dep.id);
+  });
+}
 
 function abrirDep(id){
   editDep=id||null;
@@ -986,8 +1001,8 @@ async function guardarRsvp(){
   irAMesFecha(ent);
   if(tabAct!=="cal")goTab("cal");
   sv("rsvp_v6",rsvps);
-  await syncTab("rsvp_v6",rsvps);
   cerrarRsvp();renderTodo();triggerIcalUpdate();
+  syncTab("rsvp_v6",rsvps);
 }
 
 // UTILS
