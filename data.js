@@ -20,6 +20,15 @@ const RSVP_CHUNK_SIZE=12;
 const RSVP_CHUNK_DELAY_MS=120;
 const CHUNK_SYNC_DEFAULT=true;
 const DEFAULT_USERS=[{user:"Hector",pass:"Ruiz Morelos",rol:"admin"}];
+const DEFAULT_TEMPLATES={
+  huesped:"Buen dia {nombre} confirmamos tu reserva del {fecha_entrada} al {fecha_salida}, pueden pasar a recoger las llaves del dpto {dpto} en la caseta de vigilancia, check in 3 PM, check out 11 AM.\n\nUBICACION {ubicacion}\nREGLAMENTO {reglamento}\nWiFi: {wifi} | Pass: {wifi_pass}",
+  llaves:"Llegada proxima - {depto_nombre}\nHuesped: {nombre}\nEntrada: {fecha_entrada}\nSalida: {fecha_salida}\nPersonas: {personas}\n\nFavor tener el departamento listo.",
+  admin:"Nueva llegada - {depto_nombre}\nHuesped: {nombre}\nEntrada: {fecha_entrada}\nSalida: {fecha_salida}\nPersonas: {personas}\n\nFavor coordinar acceso.",
+  apartado:"Hola {nombre}, tu fecha del {fecha_entrada} al {fecha_salida} en {depto_nombre} quedo apartada por 24 hrs. Confirma a la brevedad.",
+  liberado:"Hola {nombre}, la fecha del {fecha_entrada} al {fecha_salida} en {depto_nombre} fue liberada por vencimiento. Si aun tienes interes contactanos.",
+  aseo:"Resumen de aseo\n\n{detalle}\n\nTotal: ${total}"
+};
+const DEFAULT_CFG={aseo16:250,aseo30:300};
 var syncWriteQueue=Promise.resolve();
 
 function ld(k,d){try{return JSON.parse(localStorage.getItem(k)||"null")||d;}catch(e){return d;}}
@@ -58,6 +67,22 @@ function normalizeUsers(list){
   });
   return valid.length?valid:DEFAULT_USERS.slice();
 }
+function normalizeTemplates(value){
+  if(!value||typeof value!=="object"||Array.isArray(value))return Object.assign({},DEFAULT_TEMPLATES);
+  var out=Object.assign({},DEFAULT_TEMPLATES);
+  Object.keys(DEFAULT_TEMPLATES).forEach(function(key){
+    var v=value[key];
+    if(typeof v==="string"&&v.trim())out[key]=v;
+  });
+  return out;
+}
+function normalizeCfg(value){
+  if(!value||typeof value!=="object"||Array.isArray(value))return Object.assign({},DEFAULT_CFG);
+  var out=Object.assign({},DEFAULT_CFG);
+  if(value.aseo16!==undefined){var a16=parseFloat(value.aseo16);if(!isNaN(a16))out.aseo16=a16;}
+  if(value.aseo30!==undefined){var a30=parseFloat(value.aseo30);if(!isNaN(a30))out.aseo30=a30;}
+  return out;
+}
 function normalizePendingSyncState(pending){
   if(!pending||typeof pending!=="object")return {};
   var clean={};
@@ -77,6 +102,14 @@ function bootstrapLocalState(){
   try{
     var pending=normalizePendingSyncState(getPendingSync());
     localStorage.setItem(PENDING_SYNC_KEY,JSON.stringify(pending));
+  }catch(e){}
+  try{
+    var templates=normalizeTemplates(ld("tpl_v6",DEFAULT_TEMPLATES));
+    localStorage.setItem("tpl_v6",JSON.stringify(templates));
+  }catch(e){}
+  try{
+    var config=normalizeCfg(ld("cfg_v6",DEFAULT_CFG));
+    localStorage.setItem("cfg_v6",JSON.stringify(config));
   }catch(e){}
 }
 bootstrapLocalState();
@@ -254,8 +287,8 @@ async function cargarSheets(){
     if(Array.isArray(all.egresos)&&!hasPendingSync("egr_v6"))egrs=all.egresos;
     if(Array.isArray(all.apartados)&&!hasPendingSync("apart_v6"))aparts=all.apartados;
     if(Array.isArray(all.usuarios)&&!hasPendingSync("usr_v6"))usrs=normalizeUsers(all.usuarios);
-    if(all.templates&&!hasPendingSync("tpl_v6"))tpls=all.templates;
-    if(all.config&&!hasPendingSync("cfg_v6"))cfg=all.config;
+    if(all.templates!==undefined&&!hasPendingSync("tpl_v6"))tpls=normalizeTemplates(all.templates);
+    if(all.config!==undefined&&!hasPendingSync("cfg_v6"))cfg=normalizeCfg(all.config);
     ["deps_v6","rsvp_v6","egr_v6","apart_v6","usr_v6","tpl_v6","cfg_v6"].forEach(function(k){
       var mk={deps_v6:deps,rsvp_v6:rsvps,egr_v6:egrs,apart_v6:aparts,usr_v6:usrs,tpl_v6:tpls,cfg_v6:cfg};
       try{localStorage.setItem(k,JSON.stringify(mk[k]));}catch(e){}
@@ -276,15 +309,8 @@ var rsvps=ld("rsvp_v6",[]).filter(reservaValida);
 var egrs=ld("egr_v6",[]);
 var aparts=ld("apart_v6",[]);
 var usrs=normalizeUsers(ld("usr_v6",DEFAULT_USERS));
-var tpls=ld("tpl_v6",{
-  huesped:"Buen dia {nombre} confirmamos tu reserva del {fecha_entrada} al {fecha_salida}, pueden pasar a recoger las llaves del dpto {dpto} en la caseta de vigilancia, check in 3 PM, check out 11 AM.\n\nUBICACION {ubicacion}\nREGLAMENTO {reglamento}\nWiFi: {wifi} | Pass: {wifi_pass}",
-  llaves:"Llegada proxima - {depto_nombre}\nHuesped: {nombre}\nEntrada: {fecha_entrada}\nSalida: {fecha_salida}\nPersonas: {personas}\n\nFavor tener el departamento listo.",
-  admin:"Nueva llegada - {depto_nombre}\nHuesped: {nombre}\nEntrada: {fecha_entrada}\nSalida: {fecha_salida}\nPersonas: {personas}\n\nFavor coordinar acceso.",
-  apartado:"Hola {nombre}, tu fecha del {fecha_entrada} al {fecha_salida} en {depto_nombre} quedo apartada por 24 hrs. Confirma a la brevedad.",
-  liberado:"Hola {nombre}, la fecha del {fecha_entrada} al {fecha_salida} en {depto_nombre} fue liberada por vencimiento. Si aun tienes interes contactanos.",
-  aseo:"Resumen de aseo\n\n{detalle}\n\nTotal: ${total}"
-});
-var cfg=ld("cfg_v6",{aseo16:250,aseo30:300});
+var tpls=normalizeTemplates(ld("tpl_v6",DEFAULT_TEMPLATES));
+var cfg=normalizeCfg(ld("cfg_v6",DEFAULT_CFG));
 
 var HISTORICAS=[
   {id:"h1",huesped:"Guillermo Gaytan",telefono:"526563546756",dep:"dep1",personas:6,entrada:"2026-07-03",salida:"2026-07-06",precio:1204.28,deposito:0,origen:"airbnb",colorReserva:"#E8393A",pago:"liquidada",anticipo:0,notas:"",mensajes:{},correo:""},

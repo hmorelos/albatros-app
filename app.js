@@ -318,14 +318,23 @@ function registrarMsg(id,tipo){
   rsvps[i].mensajes[tipo]=new Date().toISOString();
   sv("rsvp_v6",rsvps);
 }
+function normalizarTelefonoWA(valor){
+  var tel=String(valor||"").replace(/\D/g,"");
+  if(tel.startsWith("00"))tel=tel.slice(2);
+  return tel;
+}
 function enviarWA(id,tipo){
   var r=rsvps.find(function(x){return x.id===id;});if(!r)return;
   var dep=depById(r.dep)||{};
   var msg=aplicarTpl(tpls[tipo]||"",r);
   var tel="";
-  if(tipo==="llaves")tel=(dep.telL||"").replace(/[\s\-\(\)]/g,"");
-  else if(tipo==="admin")tel=(dep.telA||"").replace(/[\s\-\(\)]/g,"");
-  else tel=(r.telefono||"").replace(/[\s\-\(\)]/g,"");
+  if(tipo==="llaves")tel=normalizarTelefonoWA(dep.telL);
+  else if(tipo==="admin")tel=normalizarTelefonoWA(dep.telA);
+  else tel=normalizarTelefonoWA(r.telefono);
+  if(!tel){
+    alert("No hay telefono valido para este mensaje.");
+    return;
+  }
   var msgF=msg;
   if(tipo==="admin"&&r.pdfLink)msgF+="\n\nReservacion: "+r.pdfLink;
   registrarMsg(id,tipo);
