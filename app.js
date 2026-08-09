@@ -252,6 +252,38 @@ function updFilDep(){
 
 function msgPendiente(r){var m=r.mensajes||{};return !m.huesped||!m.llaves||!m.admin;}
 
+function rangosEmpalmados(entA,salA,entB,salB){
+  return entA<salB&&salA>entB;
+}
+function conflictosReserva(depId,ent,sal,excludeId){
+  if(!depId||!ent||!sal||sal<=ent)return [];
+  return rsvps.filter(function(r){
+    if(!r||r.id===excludeId)return false;
+    if(r.dep!==depId)return false;
+    if(typeof r.entrada!=="string"||typeof r.salida!=="string")return false;
+    return rangosEmpalmados(ent,sal,r.entrada,r.salida);
+  });
+}
+function renderWarningEmpalmeRsvp(){
+  var dep=document.getElementById("f-dep").value;
+  var ent=document.getElementById("f-ent").value;
+  var sal=document.getElementById("f-sal").value;
+  var wrap=document.getElementById("fg-overlap-warning");
+  var txt=document.getElementById("overlap-warning-text");
+  if(!wrap||!txt)return;
+  var conflictos=conflictosReserva(dep,ent,sal,editRsvp);
+  if(!conflictos.length){
+    wrap.style.display="none";
+    txt.textContent="";
+    return;
+  }
+  txt.innerHTML=conflictos.slice(0,3).map(function(c){
+    var origen=(c.origen||"sin origen");
+    return "<div>"+fmtD(c.entrada)+" → "+fmtD(c.salida)+" | "+(c.huesped||"Sin nombre")+" | Reservo: "+origen+"</div>";
+  }).join("")+(conflictos.length>3?"<div>... y "+(conflictos.length-3)+" mas</div>":"");
+  wrap.style.display="";
+}
+
 function renderRsvp(){
   var fd=document.getElementById("fil-dep").value,fe=document.getElementById("fil-est").value;
   var fp=document.getElementById("fil-pago").value,fm=document.getElementById("fil-msg").value;
@@ -972,6 +1004,7 @@ function abrirRsvp(id,prefill){
     document.getElementById("fg-anticipo").style.display=r.pago==="parcial"?"":"none";
     document.getElementById("f-notas").value=r.notas||"";
     var rads=document.querySelectorAll("input[name=\"pmodo\"]");if(rads[0])rads[0].checked=true;
+    renderWarningEmpalmeRsvp();
   } else {
     document.getElementById("mo-rsvp-tit").textContent="Nueva reserva";document.getElementById("btn-rsvp-txt").textContent="Guardar";
     ["f-huesped","f-tel","f-correo","f-per","f-ent","f-sal","f-precio","f-notas","f-anticipo","f-dep2","f-airbnb"].forEach(function(i){document.getElementById(i).value="";});
@@ -982,6 +1015,7 @@ function abrirRsvp(id,prefill){
       document.getElementById("f-huesped").value=prefill.nombre||"";document.getElementById("f-tel").value=prefill.telefono||"";
       s.value=prefill.dep||"";document.getElementById("f-ent").value=prefill.entrada||"";document.getElementById("f-sal").value=prefill.salida||"";
     }
+    renderWarningEmpalmeRsvp();
   }
 }
 function cerrarRsvp(){document.getElementById("mo-rsvp").classList.remove("open");editRsvp=null;}
@@ -1107,6 +1141,9 @@ document.getElementById("lp").addEventListener("keydown",function(e){if(e.key===
 document.getElementById("lu").addEventListener("keydown",function(e){if(e.key==="Enter")document.getElementById("lp").focus();});
 document.getElementById("f-ent").addEventListener("change",calcPrecio);
 document.getElementById("f-sal").addEventListener("change",calcPrecio);
+document.getElementById("f-dep").addEventListener("change",renderWarningEmpalmeRsvp);
+document.getElementById("f-ent").addEventListener("change",renderWarningEmpalmeRsvp);
+document.getElementById("f-sal").addEventListener("change",renderWarningEmpalmeRsvp);
 
 // Override limpio de la vista Por dpto.
 function renderDepto(){

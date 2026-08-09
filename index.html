@@ -291,6 +291,12 @@ textarea.fi{resize:vertical;min-height:50px;}
     <div class="fg-g" id="fg-per"><label class="fl">Personas <span class="req">*</span></label><input class="fi" type="number" id="f-per" min="1" max="30" placeholder="2"><span class="em">Requerido</span></div>
     <div class="fg-g" id="fg-ent"><label class="fl">Entrada <span class="req">*</span></label><input class="fi" type="date" id="f-ent" onchange="calcPrecio()"><span class="em">Requerido</span></div>
     <div class="fg-g" id="fg-sal"><label class="fl">Salida <span class="req">*</span></label><input class="fi" type="date" id="f-sal" onchange="calcPrecio()"><span class="em">Debe ser posterior</span></div>
+    <div class="fg-g ff" id="fg-overlap-warning" style="display:none">
+      <div style="background:var(--wg);border:.5px solid var(--wb);border-radius:var(--r);padding:8px 10px;font-size:12px;color:var(--w)">
+        <strong>Warning:</strong> Fecha empalmada.
+        <div id="overlap-warning-text" style="margin-top:4px;font-size:11px"></div>
+      </div>
+    </div>
     <div class="fg-g ff" id="fg-precio">
       <label class="fl">Precio <span class="req">*</span></label>
       <div style="display:flex;gap:12px;margin-bottom:6px;font-size:12px">
@@ -384,7 +390,7 @@ textarea.fi{resize:vertical;min-height:50px;}
   </div>
 </div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="data.js?v=20260809c"></script>
-<script src="app.js?v=20260809c"></script>
+<script src="data.js?v=20260809d"></script>
+<script src="app.js?v=20260809d"></script>
 </body>
 </html>
