@@ -1235,12 +1235,22 @@ function renderDepto(){
 
 async function iniciarApp(){
   document.getElementById("fecha-hoy").textContent=new Date().toLocaleDateString("es-MX",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-  await retryPendingSync();
-  await cargarSheets();
   cargarHistoricas();
   limpiarAparts();
-  autoSyncIcals();
   renderTodo();
+
+  // Run network sync in background so the first paint is immediate.
+  (async function(){
+    try{
+      var pending=getPendingSync();
+      if(Object.keys(pending).length)await retryPendingSync();
+      await cargarSheets();
+      renderTodo();
+    }catch(_e){}
+    setTimeout(function(){
+      try{autoSyncIcals();}catch(_e){}
+    },2000);
+  })();
 }
 
 if(sessionStorage.getItem("alb")){
