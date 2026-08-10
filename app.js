@@ -1085,6 +1085,12 @@ function abrirImportacionRespaldo(){
   input.value="";
   input.click();
 }
+async function syncAirbnbFeedsManual(){
+  var targets=(deps||[]).filter(function(dep){return dep&&dep.icalAirbnb&&String(dep.icalAirbnb).trim();});
+  for(var i=0;i<targets.length;i++){
+    try{await syncIcal(targets[i].id);}catch(e){}
+  }
+}
 function importarRespaldoLocal(ev){
   var file=ev&&ev.target&&ev.target.files?ev.target.files[0]:null;
   if(!file)return;
@@ -1124,7 +1130,12 @@ function importarRespaldoLocal(ev){
   };
   reader.readAsText(file);
 }
-async function syncManual(){await retryPendingSync();await cargarSheets();renderTodo();}
+async function syncManual(){
+  await syncAirbnbFeedsManual();
+  await retryPendingSync();
+  await cargarSheets();
+  renderTodo();
+}
 async function refreshSharedData(){await retryPendingSync();await cargarSheets();renderTodo();}
 
 // LOGIN

@@ -50,13 +50,6 @@ function mergeReservasByUpdatedAt(remote,local){
   });
   return Object.keys(map).map(function(k){return map[k];});
 }
-function depSyncShape(dep){
-  var d=normDep(dep||{});
-  // icalF/icalS are volatile and can grow very large; keep them local.
-  d.icalF=[];
-  d.icalS=null;
-  return d;
-}
 function reservasRemotasValidas(remote){
   return Array.isArray(remote);
 }
@@ -213,9 +206,6 @@ async function runSyncTab(k,v,opts){
       }
       if(k==="rsvp_v6"&&Array.isArray(current)){
         current=current.filter(reservaValida);
-      }
-      if(k==="deps_v6"&&Array.isArray(current)){
-        current=current.map(depSyncShape);
       }
       var usedChunks=false;
       if(useChunked&&k==="rsvp_v6"&&Array.isArray(current)&&current.length>RSVP_CHUNK_SIZE){
